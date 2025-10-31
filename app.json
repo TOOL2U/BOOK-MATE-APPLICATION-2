@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Accounting Buddy",
+    "slug": "accounting-buddy-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.siamoon.accountingbuddy",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to your camera to scan receipts.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload receipts."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      },
+      "package": "com.siamoon.accountingbuddy",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {},
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Accounting Buddy to access your camera to scan receipts."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Accounting Buddy to access your photos to upload receipts."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
