@@ -201,6 +201,22 @@ export const apiService = {
     }
   },
 
+  // Get dropdown options for manual entry
+  async getDropdownOptions(): Promise<{ ok: boolean; data?: { properties: string[]; typeOfOperations: string[]; typeOfPayments: string[] }; error?: string }> {
+    try {
+      const response = await apiClient.get('/api/options');
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return { 
+          ok: false, 
+          error: error.response?.data?.error || error.message 
+        };
+      }
+      return { ok: false, error: 'Failed to fetch dropdown options' };
+    }
+  },
+
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     try {

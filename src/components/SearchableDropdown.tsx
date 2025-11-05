@@ -18,6 +18,7 @@ interface SearchableDropdownProps {
   items: string[];
   placeholder?: string;
   required?: boolean;
+  dropdownPosition?: 'top' | 'bottom';
 }
 
 export default function SearchableDropdown({
@@ -27,6 +28,7 @@ export default function SearchableDropdown({
   items,
   placeholder = 'Search...',
   required = false,
+  dropdownPosition = 'bottom',
 }: SearchableDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -101,7 +103,10 @@ export default function SearchableDropdown({
 
       {/* Dropdown List */}
       {showDropdown && (
-        <View style={styles.dropdown}>
+        <View style={[
+          styles.dropdown,
+          dropdownPosition === 'top' ? styles.dropdownTop : styles.dropdownBottom
+        ]}>
           <FlatList
             data={filteredItems}
             keyExtractor={(item, index) => `${item}-${index}`}
@@ -175,6 +180,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
     borderRadius: 8,
     position: 'relative',
+    borderWidth: 3,
+    borderColor: '#FFD700',
   },
   input: {
     flex: 1,
@@ -192,14 +199,13 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    top: 70,
     left: 0,
     right: 0,
     backgroundColor: '#334155',
     borderRadius: 8,
-    maxHeight: 250,
-    borderWidth: 1,
-    borderColor: '#475569',
+    maxHeight: 180,
+    borderWidth: 3,
+    borderColor: '#FFD700',
     zIndex: 1000,
     elevation: 5,
     shadowColor: '#000',
@@ -207,8 +213,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  dropdownBottom: {
+    top: 70,
+  },
+  dropdownTop: {
+    bottom: 70,
+  },
   dropdownList: {
-    maxHeight: 250,
+    maxHeight: 180,
   },
   dropdownItem: {
     flexDirection: 'row',

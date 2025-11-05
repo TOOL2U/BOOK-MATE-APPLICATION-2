@@ -69,15 +69,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
     borderRadius: 8,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#475569',
+    borderWidth: 3,
+    borderColor: '#FFD700',
   },
   picker: {
     color: '#F1F5F9',
     backgroundColor: 'transparent',
     ...Platform.select({
       ios: {
-        height: 180,
+        height: 120,
       },
       android: {
         height: 50,
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     ...Platform.select({
       ios: {
-        height: 180,
+        height: 120,
       },
     }),
   },

@@ -130,6 +130,7 @@ export default function ManualEntryScreen() {
           items={TYPE_OF_OPERATIONS}
           placeholder="Search category..."
           required
+          dropdownPosition="top"
         />
 
         {/* Payment Type Picker */}
