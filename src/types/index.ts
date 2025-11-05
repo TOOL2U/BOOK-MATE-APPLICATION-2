@@ -76,6 +76,38 @@ export interface PLResponse {
   error?: string;
 }
 
+// Overhead Expenses Data
+export interface OverheadExpense {
+  name: string;
+  expense: number;
+  percentage: number;
+}
+
+export interface OverheadExpensesResponse {
+  ok: boolean;
+  data: OverheadExpense[];
+  period: 'month' | 'year';
+  totalExpense: number;
+  timestamp: string;
+  error?: string;
+}
+
+// Property/Person Expenses Data
+export interface PropertyPersonExpense {
+  name: string;
+  expense: number;
+  percentage: number;
+}
+
+export interface PropertyPersonExpensesResponse {
+  ok: boolean;
+  data: PropertyPersonExpense[];
+  period: 'month' | 'year';
+  totalExpense: number;
+  timestamp: string;
+  error?: string;
+}
+
 // Balance Data
 export interface Balance {
   bankName: string;

@@ -6,6 +6,8 @@ import type {
   SheetsResponse,
   InboxResponse,
   PLResponse,
+  OverheadExpensesResponse,
+  PropertyPersonExpensesResponse,
   BalanceResponse,
   BalanceSaveRequest,
   BalanceSaveResponse,
@@ -121,6 +123,30 @@ export const apiService = {
   async getPL(): Promise<PLResponse> {
     try {
       const response = await apiClient.get<PLResponse>(API_ENDPOINTS.PNL);
+      return response.data;
+    } catch (error) {
+      handleError(error);
+    }
+  },
+
+  // Fetch overhead expenses breakdown
+  async getOverheadExpenses(period: 'month' | 'year'): Promise<OverheadExpensesResponse> {
+    try {
+      const response = await apiClient.get<OverheadExpensesResponse>(
+        `${API_ENDPOINTS.PNL_OVERHEAD}?period=${period}`
+      );
+      return response.data;
+    } catch (error) {
+      handleError(error);
+    }
+  },
+
+  // Fetch property/person expenses breakdown
+  async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<PropertyPersonExpensesResponse> {
+    try {
+      const response = await apiClient.get<PropertyPersonExpensesResponse>(
+        `${API_ENDPOINTS.PNL_PROPERTY}?period=${period}`
+      );
       return response.data;
     } catch (error) {
       handleError(error);
