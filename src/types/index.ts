@@ -1,7 +1,7 @@
 // Transaction Schema (10 Fields)
 export interface Transaction {
   day: string;           // "1" to "31"
-  month: string;         // "1" to "12"
+  month: string;         // Month abbreviation for display ("Jan", "Feb", etc.), converted to numbers for API
   year: string;          // "2025"
   property: string;      // Must match dropdown options
   typeOfOperation: string; // Must match dropdown options

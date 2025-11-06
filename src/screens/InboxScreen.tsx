@@ -7,16 +7,27 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
 import type { TransactionWithRow } from '../types';
+import BrandedAlert from '../components/BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
 
 export default function InboxScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<TransactionWithRow[]>([]);
+
+  // Branded alert hook
+  const {
+    alertConfig,
+    isVisible: alertVisible,
+    hideAlert,
+    showSuccess,
+    showError,
+    showConfirm,
+  } = useBrandedAlert();
 
   const fetchInbox = async () => {
     try {
@@ -29,7 +40,7 @@ export default function InboxScreen() {
       }
     } catch (error) {
       console.error('InboxScreen: Fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch transactions');
+      showError('Error', 'Failed to fetch transactions');
       setTransactions([]);
     } finally {
       setLoading(false);
@@ -47,25 +58,20 @@ export default function InboxScreen() {
   };
 
   const handleDelete = (rowNumber: number) => {
-    Alert.alert(
+    showConfirm(
       'Delete Transaction',
       'Are you sure you want to delete this transaction?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiService.deleteReceipt(rowNumber);
-              Alert.alert('Success', 'Transaction deleted');
-              fetchInbox();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete transaction');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await apiService.deleteReceipt(rowNumber);
+          showSuccess('Success', 'Transaction deleted');
+          fetchInbox();
+        } catch (error) {
+          showError('Error', 'Failed to delete transaction');
+        }
+      },
+      'Delete',
+      'Cancel'
     );
   };
 
@@ -129,7 +135,9 @@ export default function InboxScreen() {
                 <View style={styles.transactionMeta}>
                   <Text style={styles.metaText}>{transaction.property}</Text>
                   <Text style={styles.metaText}>•</Text>
-                  <Text style={styles.metaText}>{transaction.typeOfPayment}</Text>
+                  <Text style={styles.metaText} numberOfLines={2}>
+                    {transaction.typeOfPayment}
+                  </Text>
                 </View>
 
                 <View style={styles.transactionFooter}>
@@ -156,6 +164,18 @@ export default function InboxScreen() {
           </View>
         )}
       </ScrollView>
+      
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </View>
   );
 }
@@ -245,11 +265,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 8,
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
   },
   metaText: {
     color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
     fontFamily: 'Aileron-Light',
+    flexShrink: 1,
   },
   transactionFooter: {
     flexDirection: 'row',

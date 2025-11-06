@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
   RefreshControl,
@@ -12,11 +11,21 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
+import BrandedAlert from '../components/BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
 
 export default function UploadScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [ocrText, setOcrText] = useState('');
+
+  const {
+    isVisible: alertVisible,
+    alertConfig,
+    showError,
+    showSuccess,
+    hideAlert
+  } = useBrandedAlert();
 
   const pickImage = async () => {
     try {
@@ -31,7 +40,7 @@ export default function UploadScreen() {
         processImage(result.assets[0].base64, 'image/jpeg');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image');
+      showError('Error', 'Failed to pick image');
     }
   };
 
@@ -39,7 +48,7 @@ export default function UploadScreen() {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Camera permission is required');
+        showError('Permission Denied', 'Camera permission is required');
         return;
       }
 
@@ -53,7 +62,7 @@ export default function UploadScreen() {
         processImage(result.assets[0].base64, 'image/jpeg');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to take photo');
+      showError('Error', 'Failed to take photo');
     }
   };
 
@@ -76,18 +85,13 @@ export default function UploadScreen() {
       const extractResponse = await apiService.extract(ocrResponse.text);
 
       if (extractResponse.ok) {
-        Alert.alert('Success', 'Receipt processed successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Navigate to review screen with extracted data
-              Alert.alert('Success', 'Receipt processed successfully!');
-            },
-          },
-        ]);
+        showSuccess('Success', 'Receipt processed successfully!', () => {
+          // Navigate to review screen with extracted data
+          console.log('Navigation to review screen would happen here');
+        });
       }
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Processing failed');
+      showError('Error', error instanceof Error ? error.message : 'Processing failed');
     } finally {
       setLoading(false);
     }
@@ -148,6 +152,18 @@ export default function UploadScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </View>
   );
 }

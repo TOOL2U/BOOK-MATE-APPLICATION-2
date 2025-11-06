@@ -3,6 +3,7 @@ import {
   BalanceResponse, BalanceRow, LedgerResponse, MonthKey, OptionsResponse,
   PnLResponse, PostSheetsRequest, PostSheetsResponse, TransactionsResponse
 } from "../types/api";
+import { getMonthNumber } from "../utils/dateUtils";
 
 const validMonth = (m?: string | null): MonthKey => {
   if (!m || typeof m !== 'string') return "ALL";
@@ -72,8 +73,17 @@ export const apiService = {
 
   async submitTransaction(transaction: any): Promise<{ok: boolean; message?: string}> {
     try {
+      // Submit transaction with month as received (e.g., "NOV")
       const result = await this.postSheets(transaction);
-      return { ok: result.ok, message: result.error || 'Success' };
+      
+      // Handle the actual API response format
+      const isSuccess = result.ok || (result as any).success;
+      const responseMessage = result.error || (result as any).message || (isSuccess ? 'Success' : 'Submit failed');
+      
+      return { 
+        ok: isSuccess, 
+        message: responseMessage
+      };
     } catch (error) {
       return { ok: false, message: error instanceof Error ? error.message : 'Submit failed' };
     }
@@ -127,9 +137,22 @@ export const apiService = {
 
   async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
     try {
-      // Note: Overhead expenses likely contained in P&L response
-      const result = await apiService.getPnL('ALL'); // Use 'ALL' as default month
-      return { ok: true, data: result };
+      // Get options data which contains expense breakdowns
+      const result = await this.getOptions();
+      if (!result.data || !result.data.typeOfOperations) {
+        return { ok: false, error: 'No expense data available' };
+      }
+
+      // Filter for overhead expenses (those starting with "EXP -")
+      const overheadCategories = result.data.typeOfOperations
+        .filter((op: any) => op.name.startsWith('EXP -'))
+        .map((op: any) => ({
+          category: op.name,
+          amount: period === 'month' ? op.monthly[10] : op.yearTotal // November is index 10
+        }))
+        .filter((expense: any) => expense.amount > 0); // Only show categories with amounts
+
+      return { ok: true, data: overheadCategories };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : 'Overhead expenses fetch failed' };
     }

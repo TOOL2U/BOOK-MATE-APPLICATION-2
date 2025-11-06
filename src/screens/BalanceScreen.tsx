@@ -7,18 +7,27 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS, SPACING, RADIUS } from '../config/theme';
 import type { Balance } from '../types';
 import TransferModal from '../components/TransferModal';
+import BrandedAlert from '../components/BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
 
 export default function BalanceScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
+
+  // Branded alert hook
+  const {
+    alertConfig,
+    isVisible: alertVisible,
+    hideAlert,
+    showError,
+  } = useBrandedAlert();
 
   const fetchBalances = async () => {
     try {
@@ -27,7 +36,7 @@ export default function BalanceScreen() {
         setBalances(response.balances);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to fetch balances');
+      showError('Error', 'Failed to fetch balances');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -126,6 +135,18 @@ export default function BalanceScreen() {
           }}
         />
       </ScrollView>
+
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </View>
   );
 }

@@ -53,6 +53,7 @@ export interface PnLResponse {
 export interface OptionsResponse {
   data: {
     // Rich + string versions (per unified API)
+    months: string[];
     typeOfPayments: { name: string; monthly: number[]; yearTotal: number }[];
     typeOfPayment: string[];
     typeOfOperations: string[];

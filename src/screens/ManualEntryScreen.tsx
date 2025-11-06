@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -15,20 +14,32 @@ import { COLORS, SHADOWS } from '../config/theme';
 import type { Transaction } from '../types';
 import CustomPicker from '../components/CustomPicker';
 import SearchableDropdown from '../components/SearchableDropdown';
+import BrandedAlert from '../components/BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
 
 export default function ManualEntryScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
   
+  // Branded alert hook
+  const {
+    alertConfig,
+    isVisible: alertVisible,
+    hideAlert,
+    showSuccess,
+    showError,
+  } = useBrandedAlert();
+  
   // Dynamic dropdown options from API
   const [properties, setProperties] = useState<string[]>([]);
   const [typeOfOperations, setTypeOfOperations] = useState<string[]>([]);
   const [typeOfPayments, setTypeOfPayments] = useState<string[]>([]);
+  const [months, setMonths] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<Transaction>({
     day: new Date().getDate().toString(),
-    month: (new Date().getMonth() + 1).toString(),
+    month: '',
     year: new Date().getFullYear().toString(),
     property: '',
     typeOfOperation: '',
@@ -47,6 +58,7 @@ export default function ManualEntryScreen() {
       
       if (response.data) {
         setProperties(response.data.properties || []);
+        setMonths(response.data.months || ['ALL', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']);
         
         // Handle case where API returns rich objects with {name, monthly, yearTotal}
         const operations = response.data.typeOfOperations || [];
@@ -57,15 +69,21 @@ export default function ManualEntryScreen() {
         
         setTypeOfPayments(response.data.typeOfPayment || []); // Note: API returns 'typeOfPayment' (singular)
         
+        // Get current month abbreviation (NOV for November)
+        const currentMonthIndex = new Date().getMonth(); // 0-11
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const currentMonth = monthNames[currentMonthIndex];
+        
         // Set default values once options are loaded
         setFormData(prev => ({
           ...prev,
           property: response.data.properties?.[0] || '',
-          typeOfPayment: response.data.typeOfPayment?.[0] || '',
+          typeOfPayment: '', // Keep empty to show placeholder
+          month: currentMonth, // Set current month (NOV)
         }));
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load dropdown options');
+      showError('Error', 'Failed to load dropdown options');
     } finally {
       setOptionsLoading(false);
     }
@@ -76,14 +94,58 @@ export default function ManualEntryScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    // Validation
-    if (!formData.typeOfOperation) {
-      Alert.alert('Validation Error', 'Please select a category');
+    // Comprehensive validation
+    if (!formData.day || formData.day.trim() === '') {
+      showError('Validation Error', 'Please enter a day');
+      return;
+    }
+
+    if (!formData.month || formData.month.trim() === '') {
+      showError('Validation Error', 'Please select a month');
+      return;
+    }
+
+    if (!formData.year || formData.year.trim() === '') {
+      showError('Validation Error', 'Please enter a year');
+      return;
+    }
+
+    if (!formData.property || formData.property.trim() === '') {
+      showError('Validation Error', 'Please select a property');
+      return;
+    }
+
+    if (!formData.typeOfOperation || formData.typeOfOperation.trim() === '') {
+      showError('Validation Error', 'Please select a category');
+      return;
+    }
+
+    if (!formData.typeOfPayment || formData.typeOfPayment.trim() === '') {
+      showError('Validation Error', 'Please select a payment type');
+      return;
+    }
+
+    if (!formData.detail || formData.detail.trim() === '') {
+      showError('Validation Error', 'Please enter a description');
       return;
     }
 
     if (formData.debit === 0 && formData.credit === 0) {
-      Alert.alert('Validation Error', 'Please enter either debit or credit amount');
+      showError('Validation Error', 'Please enter either debit or credit amount');
+      return;
+    }
+
+    // Validate day is valid number (1-31)
+    const dayNum = parseInt(formData.day);
+    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+      showError('Validation Error', 'Please enter a valid day (1-31)');
+      return;
+    }
+
+    // Validate year is valid number
+    const yearNum = parseInt(formData.year);
+    if (isNaN(yearNum) || yearNum < 1900 || yearNum > 2100) {
+      showError('Validation Error', 'Please enter a valid year');
       return;
     }
 
@@ -92,25 +154,61 @@ export default function ManualEntryScreen() {
       const response = await apiService.submitTransaction(formData);
       
       if (response.ok) {
-        Alert.alert('Success', 'Transaction added successfully!');
+        showSuccess('Success', 'Transaction added successfully!');
         // Reset form
+        const currentMonthIndex = new Date().getMonth(); // 0-11
+        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const currentMonth = monthNames[currentMonthIndex];
+        
         setFormData({
           day: new Date().getDate().toString(),
-          month: (new Date().getMonth() + 1).toString(),
+          month: currentMonth,
           year: new Date().getFullYear().toString(),
           property: properties[0] || '',
           typeOfOperation: '',
-          typeOfPayment: typeOfPayments[0] || '',
+          typeOfPayment: '', // Keep empty to show placeholder
           detail: '',
           ref: '',
           debit: 0,
           credit: 0,
         });
       } else {
-        Alert.alert('Error', response.message || 'Failed to submit transaction');
+        // Parse error message from response
+        let errorMessage = 'Failed to submit transaction';
+        if (response.message) {
+          try {
+            // Try to parse JSON error if it's JSON
+            const parsed = JSON.parse(response.message);
+            errorMessage = parsed.message || parsed.error || errorMessage;
+          } catch {
+            // If not JSON, use the message as is
+            errorMessage = response.message;
+          }
+        }
+        showError('Submission Error', errorMessage);
       }
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to submit');
+      let errorMessage = 'Failed to submit transaction';
+      if (error instanceof Error) {
+        try {
+          // Try to extract meaningful error from HTTP error
+          const match = error.message.match(/HTTP \d+ .+ :: (.+)/);
+          if (match) {
+            const errorBody = match[1];
+            try {
+              const parsed = JSON.parse(errorBody);
+              errorMessage = parsed.message || parsed.error || errorMessage;
+            } catch {
+              errorMessage = errorBody.length > 100 ? 'Server error occurred' : errorBody;
+            }
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = 'Network error occurred';
+        }
+      }
+      showError('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -118,14 +216,19 @@ export default function ManualEntryScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
+    // Get current month abbreviation (NOV for November)
+    const currentMonthIndex = new Date().getMonth(); // 0-11
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const currentMonth = monthNames[currentMonthIndex];
+    
     // Reset form to initial state and reload options
     setFormData({
       day: new Date().getDate().toString(),
-      month: (new Date().getMonth() + 1).toString(),
+      month: currentMonth,
       year: new Date().getFullYear().toString(),
       property: properties[0] || '',
       typeOfOperation: '',
-      typeOfPayment: typeOfPayments[0] || '',
+      typeOfPayment: '', // Keep empty to show placeholder
       detail: '',
       ref: '',
       debit: 0,
@@ -170,13 +273,16 @@ export default function ManualEntryScreen() {
           </View>
           <View style={styles.dateField}>
             <Text style={styles.label}>Month</Text>
-            <TextInput
-              style={styles.input}
+            <SearchableDropdown
+              label=""
               value={formData.month}
-              onChangeText={(text) => setFormData({ ...formData, month: text })}
-              keyboardType="number-pad"
-              maxLength={2}
-              placeholderTextColor={COLORS.TEXT_SECONDARY}
+              onValueChange={(value) => setFormData({ ...formData, month: value })}
+              items={months.filter(month => month !== 'ALL')} // Exclude 'ALL' option for input
+              placeholder="Select month"
+              showClearButton={false}
+              noMargin={true}
+              borderColor={COLORS.BORDER}
+              zIndex={2000}
             />
           </View>
           <View style={styles.dateField}>
@@ -226,9 +332,11 @@ export default function ManualEntryScreen() {
 
         {/* Detail */}
         <View style={styles.field}>
-          <Text style={styles.label}>Description (Optional)</Text>
+          <Text style={styles.label}>
+            Description <Text style={styles.required}>*</Text>
+          </Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { borderColor: COLORS.YELLOW }]}
             value={formData.detail}
             onChangeText={(text) => setFormData({ ...formData, detail: text })}
             placeholder="Enter description"
@@ -290,6 +398,18 @@ export default function ManualEntryScreen() {
         </TouchableOpacity>
         </ScrollView>
       )}
+      
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </View>
   );
 }
@@ -335,6 +455,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 16,
+    alignItems: 'flex-start',
   },
   dateField: {
     flex: 1,
@@ -350,6 +471,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  required: {
+    color: COLORS.ERROR,
   },
   input: {
     backgroundColor: COLORS.SURFACE_1,

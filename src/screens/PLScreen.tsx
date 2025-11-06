@@ -6,23 +6,43 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
-import type { PLData, OverheadExpense, PropertyPersonExpense } from '../types';
-import { COLORS, SPACING, RADIUS, SHADOWS } from '../config/theme';
+import type { PLData } from '../types';
+
+// Local interfaces for modal compatibility
+interface OverheadExpense {
+  category: string;
+  amount: number;
+}
+
+interface PropertyPersonExpense {
+  property: string;
+  person: string;
+  amount: number;
+}
+import { COLORS, SHADOWS } from '../config/theme';
 import { Card } from '../components/ui/Card';
-import { SectionHeader } from '../components/ui/SectionHeader';
 import OverheadExpensesModal from '../components/OverheadExpensesModal';
 import PropertyPersonModal from '../components/PropertyPersonModal';
+import BrandedAlert from '../components/BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
 
 export default function PLScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [monthData, setMonthData] = useState<PLData | null>(null);
   const [yearData, setYearData] = useState<PLData | null>(null);
+  
+  // Branded Alert
+  const {
+    isVisible: alertVisible,
+    alertConfig,
+    showError,
+    hideAlert
+  } = useBrandedAlert();
   
   // Overhead expenses modal state
   const [overheadModalVisible, setOverheadModalVisible] = useState(false);
@@ -47,12 +67,12 @@ export default function PLScreen() {
         setYearData(response.data.data.year);
       } else {
         console.error('P&L response not ok:', response);
-        Alert.alert('Error', 'Failed to fetch P&L data: Invalid response');
+        showError('Error', 'Failed to fetch P&L data: Invalid response');
       }
     } catch (error) {
       console.error('P&L fetch error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Error', `Failed to fetch P&L data: ${errorMessage}`);
+      showError('Error', `Failed to fetch P&L data: ${errorMessage}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,7 +88,7 @@ export default function PLScreen() {
     fetchPLData();
   };
 
-  const handleOverheadCardPress = async (period: 'month' | 'year') => {
+    const handleOverheadCardPress = async (period: 'month' | 'year') => {
     setOverheadPeriod(period);
     setOverheadModalVisible(true);
     setLoadingOverheads(true);
@@ -76,16 +96,21 @@ export default function PLScreen() {
     try {
       const response = await apiService.getOverheadExpenses(period);
       if (response.ok && response.data) {
-        // Use the P&L data directly since overhead expenses are just returning P&L data
-        const plData = period === 'month' ? monthData : yearData;
-        setOverheadExpenses([]); // No detailed breakdown available yet
-        setOverheadTotal(plData?.overheads || 0);
+        // Transform the data to match modal interface
+        const transformedExpenses = response.data.map((item: any) => ({
+          category: item.name,
+          amount: period === 'month' ? (item.monthly[10] || 0) : item.yearTotal // November is index 10
+        })).filter((item: any) => item.amount > 0);
+        
+        setOverheadExpenses(transformedExpenses);
+        const total = transformedExpenses.reduce((sum: number, item: any) => sum + item.amount, 0);
+        setOverheadTotal(total);
       } else {
-        Alert.alert('Error', 'Failed to fetch overhead expenses');
+        showError('Error', 'Failed to fetch overhead expenses');
       }
     } catch (error) {
       console.error('Overhead expenses fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch overhead expenses');
+      showError('Error', 'Failed to fetch overhead expenses');
     } finally {
       setLoadingOverheads(false);
     }
@@ -104,11 +129,11 @@ export default function PLScreen() {
         setPropertyExpenses([]); // No detailed breakdown available yet
         setPropertyTotal(plData?.propertyPersonExpense || 0);
       } else {
-        Alert.alert('Error', 'Failed to fetch property/person expenses');
+        showError('Error', 'Failed to fetch property/person expenses');
       }
     } catch (error) {
       console.error('Property/person expenses fetch error:', error);
-      Alert.alert('Error', 'Failed to fetch property/person expenses');
+      showError('Error', 'Failed to fetch property/person expenses');
     } finally {
       setLoadingProperty(false);
     }
@@ -192,7 +217,8 @@ export default function PLScreen() {
           />
         }
       >
-        <SectionHeader title="P&L DASHBOARD" subtitle="Profit & Loss Overview" />
+        <Text style={styles.title}>P&L Dashboard</Text>
+        <Text style={styles.subtitle}>Profit & Loss Overview</Text>
 
         {/* Month Section */}
         <View style={styles.section}>
@@ -275,8 +301,7 @@ export default function PLScreen() {
         onClose={() => setOverheadModalVisible(false)}
         expenses={overheadExpenses}
         period={overheadPeriod}
-        totalExpense={overheadTotal}
-        loading={loadingOverheads}
+        total={overheadTotal}
       />
 
       {/* Property/Person Expenses Modal */}
@@ -285,8 +310,19 @@ export default function PLScreen() {
         onClose={() => setPropertyModalVisible(false)}
         expenses={propertyExpenses}
         period={propertyPeriod}
-        totalExpense={propertyTotal}
-        loading={loadingProperty}
+        total={propertyTotal}
+      />
+
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
       />
     </View>
   );
@@ -295,55 +331,50 @@ export default function PLScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BG,
+    backgroundColor: COLORS.GREY_PRIMARY,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.BG,
+    backgroundColor: COLORS.GREY_PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
-    padding: SPACING.LG,
+    padding: 20,
   },
   title: {
-    fontFamily: 'BebasNeue-Regular',
-    fontSize: 24,
-    fontWeight: '400',
-    lineHeight: 32,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    fontSize: 32,
+    fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.SM,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    fontFamily: 'Aileron-Light',
     fontSize: 16,
-    fontWeight: '300',
-    lineHeight: 24,
+    fontFamily: 'Aileron-Light',
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.XXL,
+    marginBottom: 24,
+    textAlign: 'center',
   },
   section: {
-    marginBottom: SPACING.XXL + SPACING.SM,
+    marginBottom: 32,
   },
   sectionTitle: {
-    fontFamily: 'BebasNeue-Regular',
     fontSize: 18,
-    fontWeight: '400',
-    lineHeight: 24,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.LG,
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   kpiGrid: {
-    gap: SPACING.MD,
+    gap: 16,
   },
   kpiCard: {
     backgroundColor: COLORS.SURFACE_1,
-    padding: SPACING.LG,
-    borderRadius: RADIUS.LG,
+    padding: 16,
+    borderRadius: 8,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.YELLOW,
     borderWidth: 1,
@@ -351,20 +382,19 @@ const styles = StyleSheet.create({
     ...SHADOWS.SMALL,
   },
   kpiLabel: {
-    fontFamily: 'Aileron-Regular',
     fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 18,
-    letterSpacing: 0.2,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.SM,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   kpiValue: {
+    fontSize: 24,
     fontFamily: 'Aileron-Bold',
-    fontSize: 28,
     fontWeight: '800',
-    lineHeight: 34,
-    letterSpacing: 0.2,
+    color: COLORS.TEXT_PRIMARY,
   },
   kpiContent: {
     flexDirection: 'row',
@@ -375,7 +405,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kpiIcon: {
-    marginLeft: SPACING.MD,
+    marginLeft: 12,
   },
 });
 

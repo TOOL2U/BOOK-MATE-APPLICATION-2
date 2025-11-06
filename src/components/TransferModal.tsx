@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS, RADIUS, SPACING } from '../config/theme';
 import CustomPicker from './CustomPicker';
+import BrandedAlert from './BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
+import { getMonthAbbreviation, getMonthNumber } from '../utils/dateUtils';
 
 interface TransferModalProps {
   visible: boolean;
@@ -32,21 +34,29 @@ export default function TransferModal({
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const {
+    isVisible: alertVisible,
+    alertConfig,
+    showError,
+    showSuccess,
+    hideAlert
+  } = useBrandedAlert();
+
   const handleTransfer = async () => {
     // Validation
     if (!fromAccount || !toAccount) {
-      Alert.alert('Validation Error', 'Please select both from and to accounts');
+      showError('Validation Error', 'Please select both from and to accounts');
       return;
     }
 
     if (fromAccount === toAccount) {
-      Alert.alert('Validation Error', 'From and to accounts must be different');
+      showError('Validation Error', 'From and to accounts must be different');
       return;
     }
 
     const transferAmount = parseFloat(amount);
     if (!transferAmount || transferAmount <= 0) {
-      Alert.alert('Validation Error', 'Please enter a valid amount greater than 0');
+      showError('Validation Error', 'Please enter a valid amount greater than 0');
       return;
     }
 
@@ -59,7 +69,7 @@ export default function TransferModal({
       // Create debit transaction (money leaving fromAccount)
       const debitTransaction = {
         day: today.getDate().toString(),
-        month: (today.getMonth() + 1).toString(),
+        month: getMonthAbbreviation(today.getMonth() + 1),
         year: today.getFullYear().toString(),
         property: 'Family', // Using Family as default property for transfers
         typeOfOperation: 'EXP - Transfer', // Transfer expense operation
@@ -73,7 +83,7 @@ export default function TransferModal({
       // Create credit transaction (money entering toAccount)
       const creditTransaction = {
         day: today.getDate().toString(),
-        month: (today.getMonth() + 1).toString(),
+        month: getMonthAbbreviation(today.getMonth() + 1),
         year: today.getFullYear().toString(),
         property: 'Family', // Using Family as default property for transfers
         typeOfOperation: 'Revenue - Transfer', // Transfer revenue operation
@@ -89,30 +99,25 @@ export default function TransferModal({
       const creditResponse = await apiService.submitTransaction(creditTransaction);
       
       if (debitResponse.ok && creditResponse.ok) {
-        Alert.alert(
+        showSuccess(
           'Transfer Successful',
           `₿${transferAmount.toLocaleString()} transferred from ${fromAccount} to ${toAccount}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onTransferComplete?.();
-                onClose();
-                // Reset form
-                setAmount('');
-                setNote('');
-                setFromAccount(accounts[0] || '');
-                setToAccount(accounts[1] || '');
-              }
-            }
-          ]
+          () => {
+            onTransferComplete?.();
+            onClose();
+            // Reset form
+            setAmount('');
+            setNote('');
+            setFromAccount(accounts[0] || '');
+            setToAccount(accounts[1] || '');
+          }
         );
       } else {
         const errorMsg = debitResponse.message || creditResponse.message || 'Unknown error occurred';
-        Alert.alert('Transfer Failed', errorMsg);
+        showError('Transfer Failed', errorMsg);
       }
     } catch (error) {
-      Alert.alert('Transfer Failed', error instanceof Error ? error.message : 'Network error');
+      showError('Transfer Failed', error instanceof Error ? error.message : 'Network error');
     } finally {
       setLoading(false);
     }
@@ -228,6 +233,18 @@ export default function TransferModal({
           </View>
         </View>
       </View>
+
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </Modal>
   );
 }

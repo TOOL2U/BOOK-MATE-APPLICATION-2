@@ -1,6 +1,13 @@
 // Test transfer API call
 const apiBaseUrl = 'https://accounting.siamoon.com';
 
+// Helper function to convert month number to abbreviation
+const getMonthAbbreviation = (monthNumber) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[monthNumber - 1] || 'Jan';
+};
+
 async function testTransfer() {
   try {
     console.log('🧪 Testing Transfer API...');
@@ -12,7 +19,7 @@ async function testTransfer() {
     // Debit transaction (money leaving Cash)
     const debitTransaction = {
       day: today.getDate().toString(),
-      month: (today.getMonth() + 1).toString(),
+      month: getMonthAbbreviation(today.getMonth() + 1),
       year: today.getFullYear().toString(),
       property: 'Family', // Using valid property
       typeOfOperation: 'EXP - Transfer', // Using existing transfer operation
@@ -26,7 +33,7 @@ async function testTransfer() {
     // Credit transaction (money entering Bank)
     const creditTransaction = {
       day: today.getDate().toString(),
-      month: (today.getMonth() + 1).toString(),
+      month: getMonthAbbreviation(today.getMonth() + 1),
       year: today.getFullYear().toString(),
       property: 'Shaun Ducker - Personal', // Using valid property
       typeOfOperation: 'Revenue - Transfer', // Using existing revenue transfer operation

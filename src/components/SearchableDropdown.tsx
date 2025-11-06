@@ -4,7 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   StyleSheet,
   Modal,
   Keyboard,
@@ -20,6 +20,10 @@ interface SearchableDropdownProps {
   placeholder?: string;
   required?: boolean;
   dropdownPosition?: 'top' | 'bottom';
+  showClearButton?: boolean;
+  noMargin?: boolean;
+  borderColor?: string;
+  zIndex?: number;
 }
 
 export default function SearchableDropdown({
@@ -30,6 +34,10 @@ export default function SearchableDropdown({
   placeholder = 'Search...',
   required = false,
   dropdownPosition = 'bottom',
+  showClearButton = true,
+  noMargin = false,
+  borderColor = COLORS.YELLOW,
+  zIndex = 1000,
 }: SearchableDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -67,13 +75,19 @@ export default function SearchableDropdown({
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>
-        {label} {required && <Text style={styles.required}>*</Text>}
-      </Text>
+    <View style={[
+      styles.container, 
+      noMargin && styles.noMargin, 
+      showDropdown && { zIndex }
+    ]}>
+      {label ? (
+        <Text style={styles.label}>
+          {label} {required && <Text style={styles.required}>*</Text>}
+        </Text>
+      ) : null}
 
       {/* Selected Value Display / Search Input */}
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { borderColor }]}>
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -84,7 +98,7 @@ export default function SearchableDropdown({
           placeholderTextColor={COLORS.TEXT_SECONDARY}
         />
         <View style={styles.iconContainer}>
-          {value && !showDropdown ? (
+          {value && !showDropdown && showClearButton ? (
             <TouchableOpacity onPress={handleClear} style={styles.iconButton}>
               <Ionicons name="close-circle" size={20} color={COLORS.TEXT_SECONDARY} />
             </TouchableOpacity>
@@ -106,42 +120,55 @@ export default function SearchableDropdown({
       {showDropdown && (
         <View style={[
           styles.dropdown,
-          dropdownPosition === 'top' ? styles.dropdownTop : styles.dropdownBottom
+          dropdownPosition === 'top' ? styles.dropdownTop : styles.dropdownBottom,
+          { borderColor, zIndex }
         ]}>
-          <FlatList
-            data={filteredItems}
-            keyExtractor={(item, index) => `${item}-${index}`}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.dropdownItem,
-                  item === value && styles.dropdownItemSelected,
-                ]}
-                onPress={() => handleSelect(item)}
-              >
-                <Text
-                  style={[
-                    styles.dropdownItemText,
-                    item === value && styles.dropdownItemTextSelected,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {item}
-                </Text>
-                {item === value && (
-                  <Ionicons name="checkmark" size={20} color={COLORS.YELLOW} />
-                )}
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No results found</Text>
-              </View>
-            }
+          <ScrollView
             style={styles.dropdownList}
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
-          />
+            showsVerticalScrollIndicator={true}
+            indicatorStyle="black"
+            scrollEventThrottle={16}
+            bounces={false}
+            overScrollMode="never"
+            contentContainerStyle={{ paddingVertical: 4 }}
+          >
+            {filteredItems.length > 0 ? (
+              filteredItems.map((item, index) => (
+                <TouchableOpacity
+                  key={`${item}-${index}`}
+                  style={[
+                    styles.dropdownItem,
+                    item === value && styles.dropdownItemSelected,
+                  ]}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      item === value && styles.dropdownItemTextSelected,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {item}
+                  </Text>
+                  {item === value && (
+                    <Ionicons 
+                      name="checkmark" 
+                      size={20} 
+                      color={COLORS.YELLOW} 
+                      style={{ marginTop: 2, marginLeft: 8 }}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No results found</Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
       )}
 
@@ -165,6 +192,9 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
     zIndex: 1,
+  },
+  noMargin: {
+    marginBottom: 0,
   },
   label: {
     color: COLORS.TEXT_PRIMARY,
@@ -208,7 +238,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: COLORS.SURFACE_1,
     borderRadius: 8,
-    maxHeight: 180,
+    maxHeight: 350,
     borderWidth: 1,
     borderColor: COLORS.YELLOW,
     zIndex: 1000,
@@ -221,15 +251,16 @@ const styles = StyleSheet.create({
     bottom: 70,
   },
   dropdownList: {
-    maxHeight: 180,
+    maxHeight: 320,
   },
   dropdownItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
+    minHeight: 48,
   },
   dropdownItemSelected: {
     backgroundColor: COLORS.SURFACE_2,

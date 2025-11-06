@@ -1,6 +1,13 @@
 // Test the manual entry API flow
 const apiBaseUrl = 'https://accounting.siamoon.com';
 
+// Helper function to convert month number to abbreviation
+const getMonthAbbreviation = (monthNumber) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[monthNumber - 1] || 'Jan';
+};
+
 async function testManualEntry() {
   try {
     console.log('🧪 Testing Manual Entry API flow...');
@@ -25,7 +32,7 @@ async function testManualEntry() {
     const today = new Date();
     const testTransaction = {
       day: today.getDate().toString(),
-      month: (today.getMonth() + 1).toString(), 
+      month: getMonthAbbreviation(today.getMonth() + 1), 
       year: today.getFullYear().toString(),
       property: options.data.properties[0], // Use first property
       typeOfOperation: 'EXP - Other Expenses', // Test expense
