@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { apiService } from '../services/api';
+import { COLORS, SHADOWS } from '../config/theme';
 import type { TransactionWithRow } from '../types';
 
 export default function InboxScreen() {
@@ -20,11 +21,16 @@ export default function InboxScreen() {
   const fetchInbox = async () => {
     try {
       const response = await apiService.getInbox();
-      if (response.ok) {
-        setTransactions(response.data);
+      
+      if (response.ok && response.data) {
+        setTransactions(response.data || []);
+      } else {
+        setTransactions([]);
       }
     } catch (error) {
+      console.error('InboxScreen: Fetch error:', error);
       Alert.alert('Error', 'Failed to fetch transactions');
+      setTransactions([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -73,7 +79,7 @@ export default function InboxScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color={COLORS.YELLOW} />
       </View>
     );
   }
@@ -86,7 +92,7 @@ export default function InboxScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#3B82F6"
+            tintColor={COLORS.YELLOW}
           />
         }
       >
@@ -157,11 +163,11 @@ export default function InboxScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.GREY_PRIMARY,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.GREY_PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -169,38 +175,45 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#F1F5F9',
+    fontSize: 32,
+    fontFamily: 'MadeMirage-Regular',
+    color: COLORS.TEXT_PRIMARY,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
+    fontFamily: 'Aileron-Light',
+    color: COLORS.TEXT_SECONDARY,
     marginBottom: 24,
+    textAlign: 'center',
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
   },
   emptyText: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 18,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
   },
   emptySubtext: {
-    color: '#64748B',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Light',
     textAlign: 'center',
   },
   transactionList: {
     gap: 12,
   },
   transactionCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.SURFACE_1,
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
   transactionHeader: {
     flexDirection: 'row',
@@ -209,8 +222,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   transactionDate: {
-    color: '#94A3B8',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
   },
   deleteButton: {
@@ -218,10 +232,12 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     fontSize: 18,
+    color: COLORS.ERROR,
   },
   transactionDetail: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 16,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -231,8 +247,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   metaText: {
-    color: '#64748B',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
+    fontFamily: 'Aileron-Light',
   },
   transactionFooter: {
     flexDirection: 'row',
@@ -240,23 +257,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryText: {
-    color: '#94A3B8',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
+    fontFamily: 'Aileron-Light',
     flex: 1,
   },
   amountText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'BebasNeue-Regular',
+    fontWeight: '400',
   },
   debitText: {
-    color: '#EF4444',
+    color: COLORS.ERROR,
   },
   creditText: {
-    color: '#10B981',
+    color: COLORS.SUCCESS,
   },
   refText: {
-    color: '#64748B',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 11,
+    fontFamily: 'Aileron-Light',
     marginTop: 4,
     fontStyle: 'italic',
   },

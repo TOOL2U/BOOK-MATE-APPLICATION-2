@@ -10,12 +10,13 @@ import {
   Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS, SHADOWS } from '../config/theme';
 
 interface SearchableDropdownProps {
   label: string;
   value: string;
   onValueChange: (value: string) => void;
-  items: string[];
+  items: readonly string[];
   placeholder?: string;
   required?: boolean;
   dropdownPosition?: 'top' | 'bottom';
@@ -32,7 +33,7 @@ export default function SearchableDropdown({
 }: SearchableDropdownProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [filteredItems, setFilteredItems] = useState<string[]>(items);
+  const [filteredItems, setFilteredItems] = useState<readonly string[]>(items);
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -80,12 +81,12 @@ export default function SearchableDropdown({
           onChangeText={setSearchQuery}
           onFocus={handleFocus}
           placeholder={value || placeholder}
-          placeholderTextColor="#64748B"
+          placeholderTextColor={COLORS.TEXT_SECONDARY}
         />
         <View style={styles.iconContainer}>
           {value && !showDropdown ? (
             <TouchableOpacity onPress={handleClear} style={styles.iconButton}>
-              <Ionicons name="close-circle" size={20} color="#94A3B8" />
+              <Ionicons name="close-circle" size={20} color={COLORS.TEXT_SECONDARY} />
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
@@ -95,7 +96,7 @@ export default function SearchableDropdown({
             <Ionicons
               name={showDropdown ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#94A3B8"
+              color={COLORS.TEXT_SECONDARY}
             />
           </TouchableOpacity>
         </View>
@@ -128,7 +129,7 @@ export default function SearchableDropdown({
                   {item}
                 </Text>
                 {item === value && (
-                  <Ionicons name="checkmark" size={20} color="#3B82F6" />
+                  <Ionicons name="checkmark" size={20} color={COLORS.YELLOW} />
                 )}
               </TouchableOpacity>
             )}
@@ -166,28 +167,32 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   required: {
-    color: '#EF4444',
+    color: COLORS.ERROR,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#334155',
+    backgroundColor: COLORS.SURFACE_1,
     borderRadius: 8,
     position: 'relative',
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    borderWidth: 1,
+    borderColor: COLORS.YELLOW,
   },
   input: {
     flex: 1,
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     padding: 12,
     fontSize: 16,
+    fontFamily: 'Aileron-Regular',
   },
   iconContainer: {
     flexDirection: 'row',
@@ -201,17 +206,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#334155',
+    backgroundColor: COLORS.SURFACE_1,
     borderRadius: 8,
     maxHeight: 180,
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    borderWidth: 1,
+    borderColor: COLORS.YELLOW,
     zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...SHADOWS.MEDIUM,
   },
   dropdownBottom: {
     top: 70,
@@ -228,18 +229,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#475569',
+    borderBottomColor: COLORS.BORDER,
   },
   dropdownItemSelected: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: COLORS.SURFACE_2,
   },
   dropdownItemText: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 16,
+    fontFamily: 'Aileron-Regular',
     flex: 1,
   },
   dropdownItemTextSelected: {
-    color: '#3B82F6',
+    color: COLORS.YELLOW,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
   },
   emptyContainer: {
@@ -247,8 +250,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: '#94A3B8',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Light',
   },
   backdrop: {
     position: 'absolute',

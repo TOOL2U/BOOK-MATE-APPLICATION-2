@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { COLORS } from '../config/theme';
 
 interface CustomPickerProps {
   label: string;
@@ -29,13 +30,13 @@ export default function CustomPicker({
           selectedValue={selectedValue}
           onValueChange={onValueChange}
           style={styles.picker}
-          dropdownIconColor="#94A3B8"
+          dropdownIconColor={COLORS.TEXT_SECONDARY}
           itemStyle={styles.pickerItem}
         >
           <Picker.Item
             label={placeholder}
             value=""
-            color="#64748B"
+            color={COLORS.TEXT_SECONDARY}
             enabled={false}
           />
           {items.map((item) => (
@@ -43,7 +44,7 @@ export default function CustomPicker({
               key={item}
               label={item}
               value={item}
-              color={Platform.OS === 'ios' ? '#F1F5F9' : '#0F172A'}
+              color={Platform.OS === 'ios' ? COLORS.TEXT_PRIMARY : COLORS.GREY_PRIMARY}
             />
           ))}
         </Picker>
@@ -57,24 +58,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   required: {
-    color: '#EF4444',
+    color: COLORS.ERROR,
   },
   pickerContainer: {
-    backgroundColor: '#334155',
+    backgroundColor: COLORS.SURFACE_1,
     borderRadius: 8,
     overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    borderWidth: 1,
+    borderColor: COLORS.YELLOW,
   },
   picker: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     backgroundColor: 'transparent',
+    fontFamily: 'Aileron-Regular',
     ...Platform.select({
       ios: {
         height: 120,
@@ -85,8 +90,9 @@ const styles = StyleSheet.create({
     }),
   },
   pickerItem: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 16,
+    fontFamily: 'Aileron-Regular',
     ...Platform.select({
       ios: {
         height: 120,

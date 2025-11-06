@@ -10,12 +10,15 @@ import {
   Alert,
 } from 'react-native';
 import { apiService } from '../services/api';
+import { COLORS, SHADOWS, SPACING, RADIUS } from '../config/theme';
 import type { Balance } from '../types';
+import TransferModal from '../components/TransferModal';
 
 export default function BalanceScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
 
   const fetchBalances = async () => {
     try {
@@ -59,7 +62,7 @@ export default function BalanceScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color={COLORS.YELLOW} />
       </View>
     );
   }
@@ -74,7 +77,7 @@ export default function BalanceScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#3B82F6"
+            tintColor={COLORS.YELLOW}
           />
         }
       >
@@ -86,6 +89,14 @@ export default function BalanceScreen() {
           <Text style={styles.totalLabel}>Total Balance</Text>
           <Text style={styles.totalAmount}>{formatCurrency(totalBalance)}</Text>
         </View>
+
+        {/* Transfer Button */}
+        <TouchableOpacity
+          style={styles.transferButton}
+          onPress={() => setTransferModalVisible(true)}
+        >
+          <Text style={styles.transferButtonText}>Transfer Money</Text>
+        </TouchableOpacity>
 
         {/* Individual Balances */}
         <View style={styles.balanceList}>
@@ -104,13 +115,16 @@ export default function BalanceScreen() {
           ))}
         </View>
 
-        {/* Add Balance Button */}
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => Alert.alert('Coming Soon', 'Add balance feature will be implemented')}
-        >
-          <Text style={styles.addButtonText}>+ Add Balance Entry</Text>
-        </TouchableOpacity>
+        {/* Transfer Modal */}
+        <TransferModal
+          visible={transferModalVisible}
+          onClose={() => setTransferModalVisible(false)}
+          accounts={balances?.map(b => b.bankName) || []}
+          onTransferComplete={() => {
+            // Refresh balances after successful transfer
+            fetchBalances();
+          }}
+        />
       </ScrollView>
     </View>
   );
@@ -119,11 +133,11 @@ export default function BalanceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.GREY_PRIMARY,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.GREY_PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -131,41 +145,51 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#F1F5F9',
+    fontSize: 32,
+    fontFamily: 'MadeMirage-Regular',
+    color: COLORS.TEXT_PRIMARY,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
+    fontFamily: 'Aileron-Light',
+    color: COLORS.TEXT_SECONDARY,
     marginBottom: 24,
+    textAlign: 'center',
   },
   totalCard: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: COLORS.YELLOW,
     padding: 24,
     borderRadius: 16,
     marginBottom: 24,
+    ...SHADOWS.YELLOW_GLOW,
   },
   totalLabel: {
-    color: '#BFDBFE',
+    color: COLORS.BLACK,
     fontSize: 14,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   totalAmount: {
-    color: '#FFFFFF',
+    color: COLORS.BLACK,
     fontSize: 36,
-    fontWeight: 'bold',
+    fontFamily: 'BebasNeue-Regular',
+    fontWeight: '400',
   },
   balanceList: {
     gap: 12,
     marginBottom: 24,
   },
   balanceCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.SURFACE_1,
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
   balanceHeader: {
     flexDirection: 'row',
@@ -174,33 +198,55 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   bankName: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 16,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     flex: 1,
   },
   balanceAmount: {
-    color: '#10B981',
+    color: COLORS.YELLOW,
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'BebasNeue-Regular',
+    fontWeight: '400',
   },
   lastUpdated: {
-    color: '#64748B',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 12,
+    fontFamily: 'Aileron-Light',
   },
   addButton: {
-    backgroundColor: '#334155',
+    backgroundColor: 'transparent',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#475569',
+    borderColor: COLORS.YELLOW,
     borderStyle: 'dashed',
   },
   addButtonText: {
-    color: '#94A3B8',
+    color: COLORS.YELLOW,
     fontSize: 16,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
+  },
+  transferButton: {
+    backgroundColor: COLORS.YELLOW,
+    padding: SPACING.LG,
+    borderRadius: RADIUS.MD,
+    alignItems: 'center',
+    marginTop: SPACING.MD,
+    marginBottom: SPACING.LG,
+    borderWidth: 1,
+    borderColor: COLORS.YELLOW,
+    ...SHADOWS.YELLOW_GLOW,
+  },
+  transferButtonText: {
+    color: COLORS.GREY_PRIMARY,
+    fontSize: 16,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
 

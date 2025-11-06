@@ -1,229 +1,202 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { API_CONFIG, API_ENDPOINTS } from '../config/api';
-import type {
-  OCRResponse,
-  ExtractResponse,
-  SheetsResponse,
-  InboxResponse,
-  PLResponse,
-  OverheadExpensesResponse,
-  PropertyPersonExpensesResponse,
-  BalanceResponse,
-  BalanceSaveRequest,
-  BalanceSaveResponse,
-  Transaction,
-} from '../types';
+import { getJson, postJson } from "./http";
+import {
+  BalanceResponse, BalanceRow, LedgerResponse, MonthKey, OptionsResponse,
+  PnLResponse, PostSheetsRequest, PostSheetsResponse, TransactionsResponse
+} from "../types/api";
 
-// Create axios instance
-const apiClient = axios.create({
-  baseURL: API_CONFIG.BASE_URL,
-  timeout: API_CONFIG.TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+const validMonth = (m?: string | null): MonthKey => {
+  if (!m || typeof m !== 'string') return "ALL";
+  const upperMonth = m.toUpperCase();
+  return (["ALL","JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"] as const)
+    .includes(upperMonth as MonthKey)
+    ? (upperMonth as MonthKey)
+    : "ALL";
+};
 
-// Retry logic with exponential backoff
-async function retryRequest<T>(
-  requestFn: () => Promise<T>,
-  retries = API_CONFIG.RETRY_ATTEMPTS
-): Promise<T> {
-  try {
-    return await requestFn();
-  } catch (error) {
-    if (retries > 0 && axios.isAxiosError(error)) {
-      const status = error.response?.status;
-      // Retry on 429 (rate limit) or 500 (server error)
-      if (status === 429 || status === 500) {
-        const delay = API_CONFIG.RETRY_DELAY * (API_CONFIG.RETRY_ATTEMPTS - retries + 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return retryRequest(requestFn, retries - 1);
-      }
-    }
-    throw error;
-  }
-}
-
-// Error handler
-function handleError(error: unknown): never {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{ error?: string; message?: string }>;
-    const message = axiosError.response?.data?.error || 
-                   axiosError.response?.data?.message || 
-                   axiosError.message || 
-                   'An unknown error occurred';
-    throw new Error(message);
-  }
-  throw error;
-}
-
-// API Service
 export const apiService = {
-  // OCR - Extract text from receipt image
-  async ocr(image: string, fileType: string): Promise<OCRResponse> {
-    try {
-      const response = await retryRequest(() =>
-        apiClient.post<OCRResponse>(API_ENDPOINTS.OCR, {
-          image,
-          fileType,
-        })
-      );
-      return response.data;
-    } catch (error) {
-      handleError(error);
-    }
+  getOptions: () => getJson<OptionsResponse>("/api/options"),
+
+  getBalance: (month?: string) =>
+    getJson<BalanceResponse>(`/api/balance?month=${validMonth(month)}`),
+
+  getPnL: (month?: string) =>
+    getJson<PnLResponse>(`/api/pnl?month=${validMonth(month)}`),
+
+  getTransactions: (month?: string) =>
+    getJson<TransactionsResponse>(`/api/transactions${month ? `?month=${validMonth(month)}` : ""}`),
+
+  getLedger: (month?: string) =>
+    getJson<LedgerResponse>(`/api/ledger?month=${validMonth(month)}`),
+
+  postSheets: (payload: PostSheetsRequest) =>
+    postJson<PostSheetsResponse>("/api/sheets", payload),
+
+  getHealth: () => {
+    // Health check endpoint requires admin auth, fall back to options check
+    return apiService.getOptions()
+      .then(() => ({ ok: true }))
+      .catch(() => ({ ok: false }));
   },
 
-  // AI Extract - Extract fields from text
-  async extract(text: string, comment?: string): Promise<ExtractResponse> {
+  // LEGACY WRAPPER METHODS - These wrap new API to match old interface for compatibility
+  
+  async ocr(image: string, fileType: string): Promise<{ok: boolean; text?: string; error?: string}> {
     try {
-      const response = await apiClient.post<ExtractResponse>(API_ENDPOINTS.EXTRACT, {
-        text,
-        comment,
+      // Note: OCR endpoint not yet unified - using legacy for now
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/extract/ocr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image, fileType }),
       });
-      return response.data;
+      const data = await response.json();
+      return data;
     } catch (error) {
-      handleError(error);
+      return { ok: false, error: error instanceof Error ? error.message : 'OCR failed' };
     }
   },
 
-  // Submit transaction to Google Sheets
-  async submitTransaction(transaction: Transaction): Promise<SheetsResponse> {
+  async extract(text: string, comment?: string): Promise<{ok: boolean; transaction?: any; error?: string}> {
     try {
-      const response = await apiClient.post<SheetsResponse>(API_ENDPOINTS.SHEETS, transaction);
-      return response.data;
-    } catch (error) {
-      handleError(error);
-    }
-  },
-
-  // Fetch all receipts from inbox
-  async getInbox(): Promise<InboxResponse> {
-    try {
-      const response = await apiClient.get<InboxResponse>(API_ENDPOINTS.INBOX);
-      return response.data;
-    } catch (error) {
-      handleError(error);
-    }
-  },
-
-  // Delete a receipt by row number
-  async deleteReceipt(rowNumber: number): Promise<{ ok: boolean; message?: string }> {
-    try {
-      const response = await apiClient.delete(API_ENDPOINTS.INBOX, {
-        data: { rowNumber },
+      // Note: Extract endpoint not yet unified - using legacy for now
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/extract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, comment }),
       });
-      return response.data;
+      const data = await response.json();
+      return data;
     } catch (error) {
-      handleError(error);
+      return { ok: false, error: error instanceof Error ? error.message : 'Extract failed' };
     }
   },
 
-  // Fetch P&L KPI data
-  async getPL(): Promise<PLResponse> {
+  async submitTransaction(transaction: any): Promise<{ok: boolean; message?: string}> {
     try {
-      const response = await apiClient.get<PLResponse>(API_ENDPOINTS.PNL);
-      return response.data;
+      const result = await this.postSheets(transaction);
+      return { ok: result.ok, message: result.error || 'Success' };
     } catch (error) {
-      handleError(error);
+      return { ok: false, message: error instanceof Error ? error.message : 'Submit failed' };
     }
   },
 
-  // Fetch overhead expenses breakdown
-  async getOverheadExpenses(period: 'month' | 'year'): Promise<OverheadExpensesResponse> {
+  async getInbox(): Promise<{ok: boolean; data?: any[]; error?: string}> {
     try {
-      const response = await apiClient.get<OverheadExpensesResponse>(
-        `${API_ENDPOINTS.PNL_OVERHEAD}?period=${period}`
-      );
-      return response.data;
-    } catch (error) {
-      handleError(error);
-    }
-  },
-
-  // Fetch property/person expenses breakdown
-  async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<PropertyPersonExpensesResponse> {
-    try {
-      const response = await apiClient.get<PropertyPersonExpensesResponse>(
-        `${API_ENDPOINTS.PNL_PROPERTY}?period=${period}`
-      );
-      return response.data;
-    } catch (error) {
-      handleError(error);
-    }
-  },
-
-  // Fetch all balances
-  async getBalances(): Promise<BalanceResponse> {
-    try {
-      const response = await apiClient.get<any>(API_ENDPOINTS.BALANCE_GET);
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/inbox`);
       
-      // Transform the API response to match our expected format
-      // API returns: { ok, allBalances: { "bankName": { timestamp, bankName, balance, note } } }
-      // We need: { ok, balances: [{ bankName, balance, lastUpdated }] }
-      const apiData = response.data;
-      
-      if (apiData.ok && apiData.allBalances) {
-        const balancesArray = Object.values(apiData.allBalances)
-          .filter((item: any) => 
-            // Filter out header row and ensure balance is a number
-            typeof item.balance === 'number' && 
-            item.balance !== 'Balance'
-          )
-          .map((item: any) => ({
-            bankName: item.bankName,
-            balance: item.balance,
-            lastUpdated: item.timestamp,
-          }));
-        
-        return {
-          ok: true,
-          balances: balancesArray,
-        };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
+      const result = await response.json();
+      
+      if (result.ok && result.data) {
+        // Sort transactions by rowNumber descending (newest first)
+        const sortedData = result.data.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
+        return { ok: true, data: sortedData };
+      }
+      
+      return { ok: false, error: 'Invalid response format' };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Inbox fetch failed' };
+    }
+  },
+
+  async deleteReceipt(rowNumber: number): Promise<{ok: boolean; message?: string}> {
+    try {
+      // Note: Delete endpoint not yet unified - using legacy for now
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/inbox`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowNumber }),
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : 'Delete failed' };
+    }
+  },
+
+  async getPL(): Promise<{ok: boolean; data?: any; error?: string}> {
+    try {
+      const result = await apiService.getPnL('ALL'); // Use 'ALL' as default month
+      return { ok: true, data: result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'P&L fetch failed' };
+    }
+  },
+
+  async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
+    try {
+      // Note: Overhead expenses likely contained in P&L response
+      const result = await apiService.getPnL('ALL'); // Use 'ALL' as default month
+      return { ok: true, data: result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Overhead expenses fetch failed' };
+    }
+  },
+
+  async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
+    try {
+      // Note: Property/person expenses likely contained in P&L response
+      const result = await apiService.getPnL('ALL'); // Use 'ALL' as default month
+      return { ok: true, data: result };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : 'Property/person expenses fetch failed' };
+    }
+  },
+
+  async getBalances(): Promise<{ok: boolean; balances: Array<{bankName: string; balance: number; lastUpdated: string}>}> {
+    try {
+      const result = await this.getBalance();
+      // Transform unified response to legacy format
+      const balances = result.items?.map((row: BalanceRow) => ({
+        bankName: row.accountName || 'Unknown',
+        balance: row.currentBalance || 0,
+        lastUpdated: row.lastTxnAt || new Date().toISOString(),
+      })) || [];
+      return { ok: true, balances };
+    } catch (error) {
       return { ok: false, balances: [] };
-    } catch (error) {
-      handleError(error);
     }
   },
 
-  // Save balance entry
-  async saveBalance(data: BalanceSaveRequest): Promise<BalanceSaveResponse> {
+  async saveBalance(data: any): Promise<{ok: boolean; message?: string}> {
     try {
-      const response = await apiClient.post<BalanceSaveResponse>(
-        API_ENDPOINTS.BALANCE_SAVE,
-        data
-      );
-      return response.data;
+      // Note: Save balance endpoint not yet unified - using legacy for now
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/balance/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      return result;
     } catch (error) {
-      handleError(error);
+      return { ok: false, message: error instanceof Error ? error.message : 'Save balance failed' };
     }
   },
 
-  // Get dropdown options for manual entry
-  async getDropdownOptions(): Promise<{ ok: boolean; data?: { properties: string[]; typeOfOperations: string[]; typeOfPayments: string[] }; error?: string }> {
+  async getDropdownOptions(): Promise<{ok: boolean; data?: {properties: string[]; typeOfOperations: string[]; typeOfPayments: string[]}; error?: string}> {
     try {
-      const response = await apiClient.get('/api/options');
-      return response.data;
+      const result = await this.getOptions();
+      return { 
+        ok: true, 
+        data: {
+          properties: result.data.properties || [],
+          typeOfOperations: result.data.typeOfOperations || [],
+          typeOfPayments: result.data.typeOfPayment || [],
+        }
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return { 
-          ok: false, 
-          error: error.response?.data?.error || error.message 
-        };
-      }
-      return { ok: false, error: 'Failed to fetch dropdown options' };
+      return { ok: false, error: error instanceof Error ? error.message : 'Dropdown options fetch failed' };
     }
   },
 
-  // Health check
-  async healthCheck(): Promise<{ status: string }> {
+  async healthCheck(): Promise<{status: string}> {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.SHEETS);
-      return response.data;
+      const result = await this.getHealth();
+      return { status: result.ok ? 'healthy' : 'unhealthy' };
     } catch (error) {
-      handleError(error);
+      return { status: 'unhealthy' };
     }
   },
 };

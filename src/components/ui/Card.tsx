@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { COLORS, RADIUS, SPACING } from '../../config/theme';
+import { COLORS, RADIUS, SPACING, SHADOWS } from '../../config/theme';
 
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
   elevated?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  glowEffect?: boolean;
 }
 
-export function Card({ children, style, elevated = false, padding = 'md' }: CardProps) {
+export function Card({ children, style, elevated = false, padding = 'md', glowEffect = false }: CardProps) {
   const getPaddingStyle = () => {
     if (padding === 'sm') return styles.paddingSM;
     if (padding === 'md') return styles.paddingMD;
@@ -17,8 +18,20 @@ export function Card({ children, style, elevated = false, padding = 'md' }: Card
     return null;
   };
 
+  const getShadowStyle = () => {
+    if (glowEffect) return SHADOWS.YELLOW_GLOW;
+    if (elevated) return SHADOWS.MEDIUM;
+    return SHADOWS.BLACK_SMALL;
+  };
+
   return (
-    <View style={[styles.card, elevated && styles.elevated, padding !== 'none' && getPaddingStyle(), style]}>
+    <View style={[
+      styles.card, 
+      elevated && getShadowStyle(), 
+      glowEffect && getShadowStyle(),
+      padding !== 'none' && getPaddingStyle(), 
+      style
+    ]}>
       {children}
     </View>
   );
@@ -29,20 +42,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SURFACE_1,
     borderRadius: RADIUS.LG,
     borderWidth: 1,
-    borderColor: `${COLORS.YELLOW}80`,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 3,
+    borderColor: COLORS.BORDER,
   },
-  elevated: {
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 40,
-    elevation: 6,
+  paddingSM: { 
+    padding: SPACING.MD 
   },
-  paddingSM: { padding: SPACING.MD },
-  paddingMD: { padding: SPACING.LG },
-  paddingLG: { padding: SPACING.XL },
+  paddingMD: { 
+    padding: SPACING.LG 
+  },
+  paddingLG: { 
+    padding: SPACING.XL 
+  },
 });

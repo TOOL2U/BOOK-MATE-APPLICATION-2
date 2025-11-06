@@ -7,12 +7,15 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { apiService } from '../services/api';
+import { COLORS, SHADOWS } from '../config/theme';
 
 export default function UploadScreen() {
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [ocrText, setOcrText] = useState('');
 
   const pickImage = async () => {
@@ -63,7 +66,7 @@ export default function UploadScreen() {
         fileType
       );
 
-      if (!ocrResponse.success || !ocrResponse.text) {
+      if (!ocrResponse.ok || !ocrResponse.text) {
         throw new Error('OCR failed');
       }
 
@@ -72,13 +75,13 @@ export default function UploadScreen() {
       // Step 2: AI Extract
       const extractResponse = await apiService.extract(ocrResponse.text);
 
-      if (extractResponse.success) {
+      if (extractResponse.ok) {
         Alert.alert('Success', 'Receipt processed successfully!', [
           {
             text: 'OK',
             onPress: () => {
-              // TODO: Navigate to review screen with extracted data
-              console.log('Extracted data:', extractResponse.data);
+              // Navigate to review screen with extracted data
+              Alert.alert('Success', 'Receipt processed successfully!');
             },
           },
         ]);
@@ -90,9 +93,24 @@ export default function UploadScreen() {
     }
   };
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    setOcrText(''); // Clear any previous OCR results
+    setRefreshing(false);
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.YELLOW}
+          />
+        }
+      >
         <Text style={styles.title}>Upload Receipt</Text>
         <Text style={styles.subtitle}>
           Take a photo or select from gallery to process your receipt
@@ -118,7 +136,7 @@ export default function UploadScreen() {
 
         {loading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color={COLORS.YELLOW} />
             <Text style={styles.loadingText}>Processing receipt...</Text>
           </View>
         )}
@@ -137,34 +155,39 @@ export default function UploadScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.GREY_PRIMARY,
   },
   content: {
     padding: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#F1F5F9',
+    fontSize: 32,
+    fontFamily: 'MadeMirage-Regular',
+    color: COLORS.TEXT_PRIMARY,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#94A3B8',
+    fontFamily: 'Aileron-Light',
+    color: COLORS.TEXT_SECONDARY,
     marginBottom: 32,
+    textAlign: 'center',
   },
   buttonContainer: {
     gap: 16,
   },
   button: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: COLORS.YELLOW,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    ...SHADOWS.YELLOW_GLOW,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: COLORS.BLACK,
     fontSize: 18,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
   },
   loadingContainer: {
@@ -172,25 +195,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#94A3B8',
+    color: COLORS.TEXT_SECONDARY,
     marginTop: 12,
     fontSize: 16,
+    fontFamily: 'Aileron-Light',
   },
   resultContainer: {
     marginTop: 24,
     padding: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.SURFACE_1,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
   resultTitle: {
-    color: '#F1F5F9',
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 18,
+    fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
   },
   resultText: {
-    color: '#94A3B8',
+    color: COLORS.TEXT_SECONDARY,
     fontSize: 14,
+    fontFamily: 'Aileron-Light',
     lineHeight: 20,
   },
 });

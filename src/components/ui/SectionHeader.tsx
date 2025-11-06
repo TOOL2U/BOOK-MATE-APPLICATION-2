@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING } from '../../config/theme';
-import { FONT_STYLES } from '../../config/fonts';
 
 interface SectionHeaderProps {
   title: string;
@@ -22,12 +21,20 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.XL,
   },
   title: {
-    ...FONT_STYLES.sectionTitle,
+    fontFamily: 'BebasNeue-Regular',
+    fontSize: 24,
+    fontWeight: '400',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: SPACING.SM,
   },
   subtitle: {
-    ...FONT_STYLES.body,
+    fontFamily: 'Aileron-Light',
+    fontSize: 16,
+    fontWeight: '300',
+    lineHeight: 24,
     color: COLORS.TEXT_SECONDARY,
   },
 });

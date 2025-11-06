@@ -12,9 +12,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
 import type { PLData, OverheadExpense, PropertyPersonExpense } from '../types';
-import { COLORS } from '../config/theme';
-import { FONT_STYLES } from '../config/fonts';
-import { Card, SectionHeader } from '../components/ui';
+import { COLORS, SPACING, RADIUS, SHADOWS } from '../config/theme';
+import { Card } from '../components/ui/Card';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import OverheadExpensesModal from '../components/OverheadExpensesModal';
 import PropertyPersonModal from '../components/PropertyPersonModal';
 
@@ -41,10 +41,10 @@ export default function PLScreen() {
   const fetchPLData = async () => {
     try {
       const response = await apiService.getPL();
-      console.log('P&L Response:', JSON.stringify(response, null, 2));
-      if (response.ok) {
-        setMonthData(response.data.month);
-        setYearData(response.data.year);
+      if (response.ok && response.data?.data) {
+        // Handle nested data structure: response.data.data.month/year
+        setMonthData(response.data.data.month);
+        setYearData(response.data.data.year);
       } else {
         console.error('P&L response not ok:', response);
         Alert.alert('Error', 'Failed to fetch P&L data: Invalid response');
@@ -75,9 +75,11 @@ export default function PLScreen() {
     
     try {
       const response = await apiService.getOverheadExpenses(period);
-      if (response.ok) {
-        setOverheadExpenses(response.data);
-        setOverheadTotal(response.totalExpense);
+      if (response.ok && response.data) {
+        // Use the P&L data directly since overhead expenses are just returning P&L data
+        const plData = period === 'month' ? monthData : yearData;
+        setOverheadExpenses([]); // No detailed breakdown available yet
+        setOverheadTotal(plData?.overheads || 0);
       } else {
         Alert.alert('Error', 'Failed to fetch overhead expenses');
       }
@@ -96,9 +98,11 @@ export default function PLScreen() {
     
     try {
       const response = await apiService.getPropertyPersonExpenses(period);
-      if (response.ok) {
-        setPropertyExpenses(response.data);
-        setPropertyTotal(response.totalExpense);
+      if (response.ok && response.data) {
+        // Use the P&L data directly since property expenses are just returning P&L data
+        const plData = period === 'month' ? monthData : yearData;
+        setPropertyExpenses([]); // No detailed breakdown available yet
+        setPropertyTotal(plData?.propertyPersonExpense || 0);
       } else {
         Alert.alert('Error', 'Failed to fetch property/person expenses');
       }
@@ -165,7 +169,7 @@ export default function PLScreen() {
     if (onPress) {
       return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-          <Card>
+          <Card glowEffect={true} elevated={true}>
             {content}
           </Card>
         </TouchableOpacity>
@@ -300,44 +304,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   content: {
-    padding: 20,
+    padding: SPACING.LG,
   },
   title: {
-    ...FONT_STYLES.sectionTitle,
+    fontFamily: 'BebasNeue-Regular',
+    fontSize: 24,
+    fontWeight: '400',
+    lineHeight: 32,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 8,
+    marginBottom: SPACING.SM,
   },
   subtitle: {
-    ...FONT_STYLES.body,
+    fontFamily: 'Aileron-Light',
+    fontSize: 16,
+    fontWeight: '300',
+    lineHeight: 24,
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: 24,
+    marginBottom: SPACING.XXL,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: SPACING.XXL + SPACING.SM,
   },
   sectionTitle: {
-    ...FONT_STYLES.cardTitle,
+    fontFamily: 'BebasNeue-Regular',
+    fontSize: 18,
+    fontWeight: '400',
+    lineHeight: 24,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 16,
+    marginBottom: SPACING.LG,
   },
   kpiGrid: {
-    gap: 12,
+    gap: SPACING.MD,
   },
   kpiCard: {
     backgroundColor: COLORS.SURFACE_1,
-    padding: 16,
-    borderRadius: 12,
+    padding: SPACING.LG,
+    borderRadius: RADIUS.LG,
     borderLeftWidth: 4,
+    borderLeftColor: COLORS.YELLOW,
     borderWidth: 1,
-    borderColor: `${COLORS.YELLOW}80`,
+    borderColor: COLORS.BORDER,
+    ...SHADOWS.SMALL,
   },
   kpiLabel: {
-    ...FONT_STYLES.label,
+    fontFamily: 'Aileron-Regular',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 18,
+    letterSpacing: 0.2,
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: 8,
+    marginBottom: SPACING.SM,
   },
   kpiValue: {
-    ...FONT_STYLES.currency,
+    fontFamily: 'Aileron-Bold',
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 34,
+    letterSpacing: 0.2,
   },
   kpiContent: {
     flexDirection: 'row',
@@ -348,7 +375,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   kpiIcon: {
-    marginLeft: 12,
+    marginLeft: SPACING.MD,
   },
 });
 

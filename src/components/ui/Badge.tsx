@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SPACING, RADIUS } from '../../config/theme';
-import { FONT_STYLES } from '../../config/fonts';
 
 interface BadgeProps {
   label: string;
@@ -40,7 +39,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   text: {
-    ...FONT_STYLES.caption,
+    fontFamily: 'Aileron-Bold',
+    fontSize: 12,
     fontWeight: '600',
+    lineHeight: 16,
+    letterSpacing: 0.2,
   },
 });
