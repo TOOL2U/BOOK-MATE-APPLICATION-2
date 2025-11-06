@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cloud server setup script for persistent Expo development
+# Cloud server setup script for persistent BookMate development
 
 # Install Node.js 18+
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -

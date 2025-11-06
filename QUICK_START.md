@@ -1,4 +1,4 @@
-# ⚡ Quick Start - Accounting Buddy Mobile
+# ⚡ Quick Start - BookMate Mobile
 
 Get the app running in 5 minutes!
 

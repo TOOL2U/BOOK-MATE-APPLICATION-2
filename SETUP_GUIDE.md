@@ -1,4 +1,4 @@
-# 🚀 Setup Guide - Accounting Buddy Mobile App
+# 🚀 Setup Guide - BookMate Mobile App
 
 ## ✅ Completed Setup Steps
 
@@ -11,7 +11,7 @@
 
 ### 2. Project Structure ✓
 ```
-accounting-buddy-mobile-application/
+bookmate-mobile-application/
 ├── App.tsx                          # Main app with navigation
 ├── src/
 │   ├── screens/                     # 5 main screens

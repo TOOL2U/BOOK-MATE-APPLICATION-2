@@ -1,5 +1,5 @@
 # 📱 MOBILE API INTEGRATION GUIDE
-## Accounting Buddy iPhone App - Backend Integration
+## BookMate iPhone App - Backend Integration
 
 **Last Updated:** October 30, 2025  
 **API Version:** 2.0  
@@ -9,7 +9,7 @@
 
 ## 1️⃣ OVERVIEW
 
-The **Accounting Buddy iPhone App** will communicate directly with the existing **Next.js API routes** hosted on Vercel. All data syncs through our **Google Sheets + Apps Script backend** — there is no separate database.
+The **BookMate iPhone App** will communicate directly with the existing **Next.js API routes** hosted on Vercel. All data syncs through our **Google Sheets + Apps Script backend** — there is no separate database.
 
 ### Architecture Flow
 ```
@@ -879,7 +879,7 @@ Import this JSON to test all endpoints:
 ```json
 {
   "info": {
-    "name": "Accounting Buddy Mobile API",
+    "name": "BookMate Mobile API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

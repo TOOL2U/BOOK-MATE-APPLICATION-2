@@ -1,5 +1,5 @@
 {
-  "name": "BookMate Expo Development",
+  "name": "BookMate Mobile Development",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},

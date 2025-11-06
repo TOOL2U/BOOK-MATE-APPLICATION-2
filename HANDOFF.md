@@ -1,9 +1,9 @@
-# 🚀 Project Handoff - Accounting Buddy Mobile App
+# 🚀 Project Handoff - BookMate Mobile App
 
 **From:** AI Development Team (Augment Agent)
 **To:** Mobile Engineering Team
 **Date:** October 30, 2025 (CRITICAL UPDATE)
-**Project:** Accounting Buddy Mobile Application - Phase 1 MVP
+**Project:** BookMate Mobile Application - Phase 1 MVP
 
 ---
 

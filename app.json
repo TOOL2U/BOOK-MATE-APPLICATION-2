@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Accounting Buddy",
-    "slug": "accounting-buddy-mobile",
+    "name": "BookMate",
+    "slug": "bookmate-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -36,13 +36,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Accounting Buddy to access your camera to scan receipts."
+          "cameraPermission": "Allow BookMate to access your camera to scan receipts."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Accounting Buddy to access your photos to upload receipts."
+          "photosPermission": "Allow BookMate to access your photos to upload receipts."
         }
       ],
       "expo-asset"

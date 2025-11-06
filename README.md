@@ -1,6 +1,6 @@
-# 📱 Accounting Buddy Mobile Application
+# 📱 BookMate Mobile Application
 
-A React Native mobile app for receipt processing and accounting management, built with Expo and TypeScript.
+A React Native mobile app for AI-powered receipt tracking and P&L automation, built with Expo and TypeScript.
 
 ---
 
@@ -42,7 +42,7 @@ The initial implementation contained incorrect dropdown values. All values have 
 1. **Clone the repository**
    ```bash
    git clone https://github.com/TOOL2U/AccountingBuddy-App.git
-   cd accounting-buddy-mobile-application
+   cd bookmate-mobile-application
    ```
 
 2. **Install dependencies**
@@ -91,7 +91,7 @@ The initial implementation contained incorrect dropdown values. All values have 
 ## 🏗️ Project Structure
 
 ```
-accounting-buddy-mobile-application/
+bookmate-mobile-application/
 ├── App.tsx                          # Main app entry point
 ├── src/
 │   ├── screens/                     # Screen components
@@ -114,7 +114,7 @@ accounting-buddy-mobile-application/
 
 ## 🔌 API Integration
 
-This app connects to the existing **Accounting Buddy Web API** hosted on Vercel.
+This app connects to the existing **BookMate Web API** hosted on Vercel.
 
 **Base URL:** `https://accounting-buddy-app.vercel.app/api`
 
@@ -223,7 +223,7 @@ ISC
 
 ## 🔗 Related Projects
 
-- [Accounting Buddy Web App](https://accounting.siamoon.com)
+- [BookMate Web App](https://accounting.siamoon.com)
 - [Backend Repository](https://github.com/TOOL2U/AccountingBuddy)
 
 ---
