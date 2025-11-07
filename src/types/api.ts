@@ -56,8 +56,12 @@ export interface OptionsResponse {
     months: string[];
     typeOfPayments: { name: string; monthly: number[]; yearTotal: number }[];
     typeOfPayment: string[];
-    typeOfOperations: string[];
+    typeOfOperations: { name: string; monthly: number[]; yearTotal: number }[];
+    typeOfOperation: string[];
     properties: string[];
+    propertiesRich: { name: string; monthly: number[]; yearTotal: number }[];
+    revenueCategories: string[];
+    revenues: { name: string; monthly: number[]; yearTotal: number }[];
   };
 }
 

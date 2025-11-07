@@ -22,6 +22,7 @@ interface PropertyPersonExpense {
   property: string;
   person: string;
   amount: number;
+  monthly?: number[]; // Array of 12 months (0-11)
 }
 import { COLORS, SHADOWS } from '../config/theme';
 import { Card } from '../components/ui/Card';
@@ -126,16 +127,24 @@ export default function PLScreen() {
     
     try {
       const response = await apiService.getPropertyPersonExpenses(period);
-      if (response.ok && response.data) {
-        // Use the P&L data directly since property expenses are just returning P&L data
-        const plData = period === 'month' ? monthData : yearData;
-        setPropertyExpenses([]); // No detailed breakdown available yet
-        setPropertyTotal(plData?.propertyPersonExpense || 0);
+      if (response.ok && response.data && Array.isArray(response.data)) {
+        // The API service already returns the correctly formatted data
+        // No need for additional transformation - data is already in format:
+        // [{ property: string, person: string, amount: number, monthly: number[] }, ...]
+        setPropertyExpenses(response.data);
+        const total = response.data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        setPropertyTotal(total);
       } else {
-        showError('Error', 'Failed to fetch property/person expenses');
+        // Handle case where no data is available
+        console.warn('No property/person expenses data available:', response.error || 'Unknown error');
+        setPropertyExpenses([]);
+        setPropertyTotal(0);
+        showError('Error', response.error || 'Failed to fetch property/person expenses');
       }
     } catch (error) {
       console.error('Property/person expenses fetch error:', error);
+      setPropertyExpenses([]);
+      setPropertyTotal(0);
       showError('Error', 'Failed to fetch property/person expenses');
     } finally {
       setLoadingProperty(false);

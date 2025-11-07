@@ -237,10 +237,93 @@ export const apiService = {
 
   async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
     try {
-      // Note: Property/person expenses likely contained in P&L response
-      const result = await apiService.getPnL('ALL'); // Use 'ALL' as default month
-      return { ok: true, data: result };
+      // Get options data for property breakdown
+      const optionsResult = await this.getOptions();
+      
+      if (!optionsResult || !optionsResult.data) {
+        console.warn('Options API returned no data');
+        return { ok: false, error: 'No options data available' };
+      }
+
+      // Define PropertyPersonExpense interface
+      interface PropertyPersonExpense {
+        property: string;
+        person: string;
+        amount: number;
+        monthly: number[];
+      }
+
+      // Get P&L data for all months to get proper totals
+      const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const monthlyPnLTotals = Array(12).fill(0);
+      
+      // Fetch P&L data for each month (no hardcoding)
+      for (let i = 0; i < 12; i++) {
+        try {
+          const monthPnL = await this.getPnL(monthNames[i]);
+          if (monthPnL && monthPnL.data && monthPnL.data.month) {
+            monthlyPnLTotals[i] = monthPnL.data.month.propertyPersonExpense || 0;
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch P&L for ${monthNames[i]}:`, error);
+          monthlyPnLTotals[i] = 0;
+        }
+      }
+
+      // Collect specific property expenses from propertiesRich (excluding Family)
+      const specificPropertyExpenses: PropertyPersonExpense[] = [];
+      const monthlyTotalsSpecificProperties = Array(12).fill(0);
+
+      if (optionsResult.data.propertiesRich && Array.isArray(optionsResult.data.propertiesRich)) {
+        optionsResult.data.propertiesRich
+          .filter((prop: any) => prop && prop.name && prop.name !== 'Family')
+          .forEach((prop: any) => {
+            const monthlyArray = prop.monthly || Array(12).fill(0);
+            const amount = period === 'month' ? (monthlyArray[10] || 0) : (prop.yearTotal || 0); // Current display month
+            
+            specificPropertyExpenses.push({
+              property: prop.name,
+              person: 'Property Owner',
+              amount: amount,
+              monthly: monthlyArray
+            });
+
+            // Track monthly totals for Family calculation
+            for (let i = 0; i < 12; i++) {
+              monthlyTotalsSpecificProperties[i] += monthlyArray[i] || 0;
+            }
+          });
+      }
+
+      // Calculate Family monthly amounts as remainder for each month (NO HARDCODING)
+      // Family = P&L Total (per month) - Sum of all specific properties (per month)
+      const familyMonthlyArray = Array(12).fill(0);
+      
+      for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+        // For each month: Family = Monthly P&L Total - Sum(Specific Properties for that month)
+        familyMonthlyArray[monthIndex] = Math.max(0, 
+          monthlyPnLTotals[monthIndex] - monthlyTotalsSpecificProperties[monthIndex]
+        );
+      }
+
+      const familyCurrentAmount = period === 'month' ? 
+        familyMonthlyArray[10] : // November for monthly view
+        familyMonthlyArray.reduce((sum, amt) => sum + amt, 0); // Year total for yearly view
+
+      // Add Family property with calculated remainder for each month
+      specificPropertyExpenses.push({
+        property: 'Family',
+        person: 'Property Owner',
+        amount: familyCurrentAmount,
+        monthly: familyMonthlyArray
+      });
+
+      // Sort to match P&L page display order (highest amounts first)
+      specificPropertyExpenses.sort((a, b) => b.amount - a.amount);
+
+      return { ok: true, data: specificPropertyExpenses };
     } catch (error) {
+      console.error('Property/person expenses fetch error:', error);
       return { ok: false, error: error instanceof Error ? error.message : 'Property/person expenses fetch failed' };
     }
   },
@@ -282,7 +365,7 @@ export const apiService = {
         ok: true, 
         data: {
           properties: result.data.properties || [],
-          typeOfOperations: result.data.typeOfOperations || [],
+          typeOfOperations: result.data.typeOfOperation || [],
           typeOfPayments: result.data.typeOfPayment || [],
         }
       };
