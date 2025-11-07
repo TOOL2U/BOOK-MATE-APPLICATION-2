@@ -9,7 +9,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { apiService } from '../services/api';
-import { COLORS, SHADOWS, SPACING, RADIUS } from '../config/theme';
+import { BalanceVerificationService, VerificationSummary } from '../services/balanceVerification';
+import { COLORS, SHADOWS } from '../config/theme';
 import type { Balance } from '../types';
 import TransferModal from '../components/TransferModal';
 import BrandedAlert from '../components/BrandedAlert';
@@ -20,6 +21,8 @@ export default function BalanceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [verificationSummary, setVerificationSummary] = useState<VerificationSummary | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
 
   // Branded alert hook
   const {
@@ -34,6 +37,8 @@ export default function BalanceScreen() {
       const response = await apiService.getBalances();
       if (response.ok) {
         setBalances(response.balances);
+        // Also run verification after fetching balances
+        await runVerification();
       }
     } catch (error) {
       showError('Error', 'Failed to fetch balances');
@@ -42,6 +47,26 @@ export default function BalanceScreen() {
       setRefreshing(false);
     }
   };
+
+    const runVerification = async () => {
+    setVerificationLoading(true);
+    try {
+      const summary = await BalanceVerificationService.verifyBalances();
+      setVerificationSummary(summary);
+    } catch (error) {
+      console.error('Error running balance verification:', error);
+      showError('Verification Error', 'Failed to verify balances. Please try again.');
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  // Run verification when component mounts
+  useEffect(() => {
+    if (balances.length > 0) {
+      runVerification();
+    }
+  }, [balances]);
 
   useEffect(() => {
     fetchBalances();
@@ -124,11 +149,123 @@ export default function BalanceScreen() {
           ))}
         </View>
 
+        {/* Balance Verification Section */}
+        {verificationSummary && (
+          <View style={styles.verificationSection}>
+            <View style={styles.verificationHeader}>
+              <Text style={styles.verificationTitle}>Balance Verification</Text>
+              <TouchableOpacity
+                style={styles.recalculateButton}
+                onPress={runVerification}
+                disabled={verificationLoading}
+              >
+                {verificationLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.BLACK} />
+                ) : (
+                  <Text style={styles.recalculateButtonText}>Recalculate</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Summary Stats */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Verification Summary</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Accounts:</Text>
+                <Text style={styles.summaryValue}>{verificationSummary.totalAccounts}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Valid Accounts:</Text>
+                <Text style={[styles.summaryValue, { color: COLORS.SUCCESS }]}>
+                  {verificationSummary.validAccounts}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Variance:</Text>
+                <Text style={[
+                  styles.summaryValue,
+                  verificationSummary.hasDiscrepancies ? { color: COLORS.ERROR } : { color: COLORS.SUCCESS }
+                ]}>
+                  {BalanceVerificationService.formatCurrency(verificationSummary.totalVariance)}
+                  {verificationSummary.hasDiscrepancies ? ' ❌' : ' ✅'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Detailed Verification */}
+            {verificationSummary.accountVerifications.map((verification, index) => (
+              <View key={index} style={[
+                styles.verificationCard,
+                !verification.isValid && styles.verificationCardError
+              ]}>
+                <Text style={styles.verificationAccountName}>{verification.accountName}</Text>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>Opening:</Text>
+                  <Text style={styles.verificationValue}>
+                    {BalanceVerificationService.formatCurrency(verification.openingBalance)}
+                  </Text>
+                </View>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>Inflow:</Text>
+                  <Text style={[styles.verificationValue, { color: COLORS.SUCCESS }]}>
+                    {BalanceVerificationService.formatCurrency(verification.inflow)}
+                  </Text>
+                </View>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>Outflow:</Text>
+                  <Text style={[styles.verificationValue, { color: COLORS.ERROR }]}>
+                    {BalanceVerificationService.formatCurrency(verification.outflow)}
+                  </Text>
+                </View>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>Calculated:</Text>
+                  <Text style={styles.verificationValue}>
+                    {BalanceVerificationService.formatCurrency(verification.calculatedBalance)}
+                  </Text>
+                </View>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>API Balance:</Text>
+                  <Text style={styles.verificationValue}>
+                    {BalanceVerificationService.formatCurrency(verification.apiBalance)}
+                  </Text>
+                </View>
+                
+                <View style={styles.verificationRow}>
+                  <Text style={styles.verificationLabel}>Difference:</Text>
+                  <Text style={[
+                    styles.verificationValue,
+                    verification.isValid ? { color: COLORS.SUCCESS } : { color: COLORS.ERROR }
+                  ]}>
+                    {BalanceVerificationService.formatCurrency(verification.difference)}
+                    {verification.isValid ? ' ✅' : ' ❌'}
+                  </Text>
+                </View>
+                
+                {verification.validationNote && (
+                  <Text style={styles.verificationNote}>
+                    Note: {verification.validationNote}
+                  </Text>
+                )}
+                
+                {verification.lastTxnAt && (
+                  <Text style={styles.verificationLastTxn}>
+                    Last Transaction: {verification.lastTxnAt}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Transfer Modal */}
         <TransferModal
           visible={transferModalVisible}
           onClose={() => setTransferModalVisible(false)}
-          accounts={balances?.map(b => b.bankName) || []}
           onTransferComplete={() => {
             // Refresh balances after successful transfer
             fetchBalances();
@@ -253,21 +390,134 @@ const styles = StyleSheet.create({
   },
   transferButton: {
     backgroundColor: COLORS.YELLOW,
-    padding: SPACING.LG,
-    borderRadius: RADIUS.MD,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: SPACING.MD,
-    marginBottom: SPACING.LG,
-    borderWidth: 1,
-    borderColor: COLORS.YELLOW,
+    marginTop: 16,
+    marginBottom: 24,
     ...SHADOWS.YELLOW_GLOW,
   },
   transferButtonText: {
-    color: COLORS.GREY_PRIMARY,
+    color: COLORS.BLACK,
+    fontSize: 18,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  // Verification Section Styles
+  verificationSection: {
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  verificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  verificationTitle: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 20,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  recalculateButton: {
+    backgroundColor: COLORS.YELLOW,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  recalculateButtonText: {
+    color: COLORS.BLACK,
+    fontSize: 14,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  summaryCard: {
+    backgroundColor: COLORS.SURFACE_1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    marginBottom: 16,
+  },
+  summaryTitle: {
+    color: COLORS.TEXT_PRIMARY,
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
-    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
+  },
+  summaryValue: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  verificationCard: {
+    backgroundColor: COLORS.SURFACE_1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    marginBottom: 12,
+  },
+  verificationCardError: {
+    borderColor: COLORS.ERROR,
+    backgroundColor: 'rgba(255, 99, 99, 0.05)',
+  },
+  verificationAccountName: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  verificationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  verificationLabel: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
+  },
+  verificationValue: {
+    color: COLORS.TEXT_PRIMARY,
+    fontSize: 13,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  verificationLastTxn: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 11,
+    fontFamily: 'Aileron-Light',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  verificationNote: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    fontFamily: 'Aileron-Regular',
+    fontStyle: 'italic',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
   },
 });
 

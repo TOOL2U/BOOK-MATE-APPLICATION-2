@@ -151,6 +151,8 @@ export default function ManualEntryScreen() {
 
     setLoading(true);
     try {
+      // NOTE: Using legacy transaction format until API supports the new format
+      // Future: Use new format with timestamp, fromAccount, transactionType, etc.
       const response = await apiService.submitTransaction(formData);
       
       if (response.ok) {
@@ -173,19 +175,9 @@ export default function ManualEntryScreen() {
           credit: 0,
         });
       } else {
-        // Parse error message from response
-        let errorMessage = 'Failed to submit transaction';
-        if (response.message) {
-          try {
-            // Try to parse JSON error if it's JSON
-            const parsed = JSON.parse(response.message);
-            errorMessage = parsed.message || parsed.error || errorMessage;
-          } catch {
-            // If not JSON, use the message as is
-            errorMessage = response.message;
-          }
-        }
-        showError('Submission Error', errorMessage);
+        // Handle error from API response
+        let errorMessage = response.message || 'Failed to submit transaction';
+        showError('Submission Failed', errorMessage);
       }
     } catch (error) {
       let errorMessage = 'Failed to submit transaction';

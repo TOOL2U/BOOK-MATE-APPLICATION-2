@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS, RADIUS, SPACING } from '../config/theme';
@@ -18,18 +19,17 @@ import { getMonthAbbreviation, getMonthNumber } from '../utils/dateUtils';
 interface TransferModalProps {
   visible: boolean;
   onClose: () => void;
-  accounts: string[]; // List of available accounts (bank names + Cash)
   onTransferComplete?: () => void;
 }
 
 export default function TransferModal({ 
   visible, 
   onClose, 
-  accounts, 
   onTransferComplete 
 }: TransferModalProps) {
-  const [fromAccount, setFromAccount] = useState(accounts[0] || '');
-  const [toAccount, setToAccount] = useState(accounts[1] || '');
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [fromAccount, setFromAccount] = useState('');
+  const [toAccount, setToAccount] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,29 @@ export default function TransferModal({
     showSuccess,
     hideAlert
   } = useBrandedAlert();
+
+  // Fetch accounts when modal opens
+  useEffect(() => {
+    if (visible) {
+      fetchAccounts();
+    }
+  }, [visible]);
+
+  const fetchAccounts = async () => {
+    try {
+      const response = await apiService.getOptions();
+      if (response.data?.typeOfPayments) {
+        const paymentAccounts = response.data.typeOfPayments.map((payment: any) => payment.name);
+        setAccounts(paymentAccounts);
+        if (paymentAccounts.length > 0) {
+          setFromAccount(paymentAccounts[0]);
+          setToAccount(paymentAccounts[1] || paymentAccounts[0]);
+        }
+      }
+    } catch (error) {
+      showError('Error', 'Failed to fetch account options');
+    }
+  };
 
   const handleTransfer = async () => {
     // Validation
@@ -66,39 +89,25 @@ export default function TransferModal({
       const transferNote = note || `Transfer from ${fromAccount} to ${toAccount}`;
       const refId = `TXF-${Date.now()}`;
 
-      // Create debit transaction (money leaving fromAccount)
-      const debitTransaction = {
+      // Create transfer transaction using the standard transaction format
+      // This will be recorded as a single transfer entry
+      const transferTransaction = {
         day: today.getDate().toString(),
         month: getMonthAbbreviation(today.getMonth() + 1),
         year: today.getFullYear().toString(),
         property: 'Family', // Using Family as default property for transfers
-        typeOfOperation: 'EXP - Transfer', // Transfer expense operation
-        typeOfPayment: fromAccount,
-        detail: `${transferNote} (Debit)`,
+        typeOfOperation: 'EXP - Transfer', // This categorizes it as a transfer
+        typeOfPayment: fromAccount, // The source account
+        detail: `${transferNote} → ${toAccount}`, // Include destination in detail
         ref: refId,
-        debit: transferAmount,
+        debit: transferAmount, // Amount leaving fromAccount
         credit: 0,
       };
 
-      // Create credit transaction (money entering toAccount)
-      const creditTransaction = {
-        day: today.getDate().toString(),
-        month: getMonthAbbreviation(today.getMonth() + 1),
-        year: today.getFullYear().toString(),
-        property: 'Family', // Using Family as default property for transfers
-        typeOfOperation: 'Revenue - Transfer', // Transfer revenue operation
-        typeOfPayment: toAccount,
-        detail: `${transferNote} (Credit)`,
-        ref: refId,
-        debit: 0,
-        credit: transferAmount,
-      };
-
-      // Submit both transactions
-      const debitResponse = await apiService.submitTransaction(debitTransaction);
-      const creditResponse = await apiService.submitTransaction(creditTransaction);
+      // Submit the transfer transaction
+      const response = await apiService.submitTransaction(transferTransaction);
       
-      if (debitResponse.ok && creditResponse.ok) {
+      if (response.ok) {
         showSuccess(
           'Transfer Successful',
           `₿${transferAmount.toLocaleString()} transferred from ${fromAccount} to ${toAccount}`,
@@ -108,12 +117,14 @@ export default function TransferModal({
             // Reset form
             setAmount('');
             setNote('');
-            setFromAccount(accounts[0] || '');
-            setToAccount(accounts[1] || '');
+            if (accounts.length > 0) {
+              setFromAccount(accounts[0]);
+              setToAccount(accounts[1] || accounts[0]);
+            }
           }
         );
       } else {
-        const errorMsg = debitResponse.message || creditResponse.message || 'Unknown error occurred';
+        const errorMsg = response.message || 'Unknown error occurred';
         showError('Transfer Failed', errorMsg);
       }
     } catch (error) {
@@ -127,8 +138,10 @@ export default function TransferModal({
     // Reset form and close
     setAmount('');
     setNote('');
-    setFromAccount(accounts[0] || '');
-    setToAccount(accounts[1] || '');
+    if (accounts.length > 0) {
+      setFromAccount(accounts[0]);
+      setToAccount(accounts[1] || accounts[0]);
+    }
     onClose();
   };
 
@@ -147,7 +160,11 @@ export default function TransferModal({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {/* From Account */}
           <View style={styles.field}>
             <Text style={styles.label}>From Account</Text>
@@ -231,7 +248,7 @@ export default function TransferModal({
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </View>
 
       {/* Branded Alert */}
@@ -284,7 +301,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
     padding: SPACING.XL,
+    paddingBottom: SPACING.XXL,
   },
   field: {
     marginBottom: SPACING.XL,

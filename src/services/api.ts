@@ -17,8 +17,11 @@ const validMonth = (m?: string | null): MonthKey => {
 export const apiService = {
   getOptions: () => getJson<OptionsResponse>("/api/options"),
 
-  getBalance: (month?: string) =>
-    getJson<BalanceResponse>(`/api/balance?month=${validMonth(month)}`),
+  getBalance: (month?: string, source?: 'app' | 'sheets') => {
+    const monthParam = validMonth(month);
+    const sourceParam = source ? `&source=${source}` : '';
+    return getJson<BalanceResponse>(`/api/balance?month=${monthParam}${sourceParam}`);
+  },
 
   getPnL: (month?: string) =>
     getJson<PnLResponse>(`/api/pnl?month=${validMonth(month)}`),
@@ -31,6 +34,26 @@ export const apiService = {
 
   postSheets: (payload: PostSheetsRequest) =>
     postJson<PostSheetsResponse>("/api/sheets", payload),
+
+  // Balance Audit specific endpoints
+  createTestTransaction: (amount: number, fromAccount: string, description: string) =>
+    postJson("/api/test-transaction", {
+      amount,
+      fromAccount,
+      description,
+      timestamp: new Date().toISOString()
+    }),
+
+  getBalanceComparison: (month?: string) => {
+    // Returns both app and sheet data for comparison
+    return Promise.all([
+      apiService.getBalance(month, 'app'),
+      apiService.getBalance(month, 'sheets').catch(() => ({ items: [] })) // Fallback if sheets API not available
+    ]).then(([app, sheets]) => ({
+      app: app.items || [],
+      sheets: sheets.items || []
+    }));
+  },
 
   getHealth: () => {
     // Health check endpoint requires admin auth, fall back to options check
@@ -137,23 +160,77 @@ export const apiService = {
 
   async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
     try {
-      // Get options data which contains expense breakdowns
-      const result = await this.getOptions();
-      if (!result.data || !result.data.typeOfOperations) {
-        return { ok: false, error: 'No expense data available' };
+      // Get both P&L data (for accurate totals) and options data (for breakdown)
+      const [pnlResult, optionsResult] = await Promise.all([
+        this.getPnL('ALL'), // Get P&L data for accurate totals
+        this.getOptions()   // Get options data for expense breakdown
+      ]);
+      
+      if (!optionsResult || !optionsResult.data) {
+        console.warn('Options API returned no data');
+        return { ok: false, error: 'No options data available' };
       }
 
-      // Filter for overhead expenses (those starting with "EXP -")
-      const overheadCategories = result.data.typeOfOperations
-        .filter((op: any) => op.name.startsWith('EXP -'))
-        .map((op: any) => ({
-          category: op.name,
-          amount: period === 'month' ? op.monthly[10] : op.yearTotal // November is index 10
-        }))
-        .filter((expense: any) => expense.amount > 0); // Only show categories with amounts
+      if (!optionsResult.data.typeOfOperations || !Array.isArray(optionsResult.data.typeOfOperations)) {
+        console.warn('typeOfOperations not found or not an array in options data');
+        return { ok: false, error: 'No expense categories available' };
+      }
+
+      // Get overhead expenses breakdown from options API
+      const overheadCategories = optionsResult.data.typeOfOperations
+        .filter((op: any) => op && op.name && (op.name.startsWith('EXP -') || op.name.startsWith('Exp -')))
+        .map((op: any) => {
+          return {
+            category: op.name,
+            amount: period === 'month' ? (op.monthly?.[10] || 0) : (op.yearTotal || 0), // November = index 10
+            monthly: op.monthly || Array(12).fill(0)
+          };
+        })
+        .filter((expense: any) => {
+          if (period === 'year') {
+            return expense.amount > 0;
+          } else {
+            return expense.monthly && expense.monthly.some((amount: number) => amount > 0);
+          }
+        });
+
+      // If we have P&L data, use it to get the accurate total and scale breakdown accordingly
+      if (pnlResult && pnlResult.data) {
+        const pnlTotal = period === 'month' ? pnlResult.data.month?.overheads : pnlResult.data.year?.overheads;
+        const breakdownTotal = overheadCategories.reduce((sum: number, item: any) => sum + item.amount, 0);
+        
+        // Scale individual items proportionally to match P&L total
+        if (pnlTotal && breakdownTotal > 0 && Math.abs(pnlTotal - breakdownTotal) > 1) {
+          const scaleFactor = pnlTotal / breakdownTotal;
+          console.log(`Scaling overhead breakdown by ${scaleFactor.toFixed(4)} to match P&L total: ${pnlTotal}`);
+          
+          overheadCategories.forEach((expense: any) => {
+            const originalAmount = expense.amount;
+            expense.amount = Math.round(expense.amount * scaleFactor);
+            
+            // Scale monthly array proportionally for all months
+            if (expense.monthly && Array.isArray(expense.monthly)) {
+              expense.monthly = expense.monthly.map((monthAmount: number) => 
+                Math.round(monthAmount * scaleFactor)
+              );
+            }
+          });
+          
+          // Verify the scaling worked correctly
+          const scaledTotal = overheadCategories.reduce((sum: number, item: any) => sum + item.amount, 0);
+          if (Math.abs(scaledTotal - pnlTotal) > 1) {
+            console.warn(`Scaling verification failed: expected ${pnlTotal}, got ${scaledTotal}`);
+          }
+        } else if (pnlTotal && breakdownTotal === 0) {
+          console.warn('No overhead expense data available for scaling');
+        } else if (!pnlTotal) {
+          console.warn('No P&L total available for overhead scaling');
+        }
+      }
 
       return { ok: true, data: overheadCategories };
     } catch (error) {
+      console.error('Overhead expenses fetch error:', error);
       return { ok: false, error: error instanceof Error ? error.message : 'Overhead expenses fetch failed' };
     }
   },

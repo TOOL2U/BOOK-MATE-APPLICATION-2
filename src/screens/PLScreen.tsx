@@ -95,21 +95,24 @@ export default function PLScreen() {
     
     try {
       const response = await apiService.getOverheadExpenses(period);
-      if (response.ok && response.data) {
-        // Transform the data to match modal interface
-        const transformedExpenses = response.data.map((item: any) => ({
-          category: item.name,
-          amount: period === 'month' ? (item.monthly[10] || 0) : item.yearTotal // November is index 10
-        })).filter((item: any) => item.amount > 0);
-        
-        setOverheadExpenses(transformedExpenses);
-        const total = transformedExpenses.reduce((sum: number, item: any) => sum + item.amount, 0);
+      if (response.ok && response.data && Array.isArray(response.data)) {
+        // The API service already returns the correctly formatted data
+        // No need for additional transformation - data is already in format:
+        // [{ category: string, amount: number }, ...]
+        setOverheadExpenses(response.data);
+        const total = response.data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
         setOverheadTotal(total);
       } else {
-        showError('Error', 'Failed to fetch overhead expenses');
+        // Handle case where no data is available
+        console.warn('No overhead expenses data available:', response.error || 'Unknown error');
+        setOverheadExpenses([]);
+        setOverheadTotal(0);
+        showError('Error', response.error || 'Failed to fetch overhead expenses');
       }
     } catch (error) {
       console.error('Overhead expenses fetch error:', error);
+      setOverheadExpenses([]);
+      setOverheadTotal(0);
       showError('Error', 'Failed to fetch overhead expenses');
     } finally {
       setLoadingOverheads(false);
