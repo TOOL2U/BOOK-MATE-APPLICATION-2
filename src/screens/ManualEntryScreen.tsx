@@ -152,9 +152,16 @@ export default function ManualEntryScreen() {
 
     setLoading(true);
     try {
+      // Ensure debit and credit are numbers before submitting
+      const submissionData = {
+        ...formData,
+        debit: typeof formData.debit === 'string' ? parseFloat(formData.debit) || 0 : formData.debit,
+        credit: typeof formData.credit === 'string' ? parseFloat(formData.credit) || 0 : formData.credit,
+      };
+      
       // NOTE: Using legacy transaction format until API supports the new format
       // Future: Use new format with timestamp, fromAccount, transactionType, etc.
-      const response = await apiService.submitTransaction(formData);
+      const response = await apiService.submitTransaction(submissionData);
       
       if (response.ok) {
         showSuccess('Success', 'Transaction added successfully!');
@@ -349,11 +356,29 @@ export default function ManualEntryScreen() {
             <Text style={styles.label}>Debit</Text>
             <TextInput
               style={styles.input}
-              value={formData.debit.toString()}
-              onChangeText={(text) =>
-                setFormData({ ...formData, debit: parseFloat(text) || 0 })
-              }
+              value={formData.debit === 0 ? '' : formData.debit.toString()}
+              onChangeText={(text) => {
+                // Allow empty, or valid decimal number
+                if (text === '') {
+                  setFormData({ ...formData, debit: 0 });
+                  return;
+                }
+                // Allow only numbers and one decimal point
+                const cleanText = text.replace(/[^0-9.]/g, '');
+                // Count decimal points
+                const decimalCount = (cleanText.match(/\./g) || []).length;
+                if (decimalCount <= 1) {
+                  // If it ends with a decimal point, store as string temporarily
+                  if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                    setFormData({ ...formData, debit: cleanText as any });
+                  } else {
+                    const num = parseFloat(cleanText);
+                    setFormData({ ...formData, debit: isNaN(num) ? 0 : num });
+                  }
+                }
+              }}
               keyboardType="decimal-pad"
+              placeholder="0.00"
               placeholderTextColor={COLORS.TEXT_SECONDARY}
             />
           </View>
@@ -361,11 +386,29 @@ export default function ManualEntryScreen() {
             <Text style={styles.label}>Credit</Text>
             <TextInput
               style={styles.input}
-              value={formData.credit.toString()}
-              onChangeText={(text) =>
-                setFormData({ ...formData, credit: parseFloat(text) || 0 })
-              }
+              value={formData.credit === 0 ? '' : formData.credit.toString()}
+              onChangeText={(text) => {
+                // Allow empty, or valid decimal number
+                if (text === '') {
+                  setFormData({ ...formData, credit: 0 });
+                  return;
+                }
+                // Allow only numbers and one decimal point
+                const cleanText = text.replace(/[^0-9.]/g, '');
+                // Count decimal points
+                const decimalCount = (cleanText.match(/\./g) || []).length;
+                if (decimalCount <= 1) {
+                  // If it ends with a decimal point, store as string temporarily
+                  if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                    setFormData({ ...formData, credit: cleanText as any });
+                  } else {
+                    const num = parseFloat(cleanText);
+                    setFormData({ ...formData, credit: isNaN(num) ? 0 : num });
+                  }
+                }
+              }}
               keyboardType="decimal-pad"
+              placeholder="0.00"
               placeholderTextColor={COLORS.TEXT_SECONDARY}
             />
           </View>

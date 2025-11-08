@@ -86,28 +86,55 @@ export default function TransferModal({
     setLoading(true);
     try {
       const today = new Date();
-      const transferNote = note || `Transfer from ${fromAccount} to ${toAccount}`;
       const refId = `TXF-${Date.now()}`;
 
-      // Create transfer transaction using the standard transaction format
-      // This will be recorded as a single transfer entry
-      const transferTransaction = {
+      // FINAL SPEC: Create TWO transactions per transfer using EXISTING schema
+      // - typeOfOperation: "Transfer" (backend will add this to valid options)
+      // - Row A: debit (money leaving source)
+      // - Row B: credit (money entering destination)
+      // - Same ref ID links the two rows
+      // - NO new fields needed (fromAccount, toAccount, etc.)
+      
+      // Row A: Source transaction (money leaving - DEBIT)
+      const sourceTransaction = {
         day: today.getDate().toString(),
         month: getMonthAbbreviation(today.getMonth() + 1),
         year: today.getFullYear().toString(),
-        property: 'Family', // Using Family as default property for transfers
-        typeOfOperation: 'EXP - Transfer', // This categorizes it as a transfer
-        typeOfPayment: fromAccount, // The source account
-        detail: `${transferNote} → ${toAccount}`, // Include destination in detail
-        ref: refId,
-        debit: transferAmount, // Amount leaving fromAccount
+        property: 'Family', // Default property for transfers
+        typeOfOperation: 'Transfer', // Backend will add this to valid operations
+        typeOfPayment: fromAccount, // Source account
+        detail: note || `Transfer to ${toAccount}`, // Clear description
+        ref: refId, // Links both rows together
+        debit: transferAmount, // Money leaving source
         credit: 0,
       };
 
-      // Submit the transfer transaction
-      const response = await apiService.submitTransaction(transferTransaction);
+      // Row B: Destination transaction (money entering - CREDIT)
+      const destinationTransaction = {
+        day: today.getDate().toString(),
+        month: getMonthAbbreviation(today.getMonth() + 1),
+        year: today.getFullYear().toString(),
+        property: 'Family', // Default property for transfers
+        typeOfOperation: 'Transfer', // Backend will add this to valid operations
+        typeOfPayment: toAccount, // Destination account
+        detail: note || `Transfer from ${fromAccount}`, // Clear description
+        ref: refId, // Same ref links to source row
+        debit: 0,
+        credit: transferAmount, // Money entering destination
+      };
+
+      // Submit both transactions (dual-row pattern)
+      const sourceResponse = await apiService.submitTransaction(sourceTransaction);
       
-      if (response.ok) {
+      if (!sourceResponse.ok) {
+        const errorMsg = sourceResponse.message || 'Failed to record source transaction';
+        showError('Transfer Failed', errorMsg);
+        return;
+      }
+
+      const destinationResponse = await apiService.submitTransaction(destinationTransaction);
+      
+      if (destinationResponse.ok) {
         showSuccess(
           'Transfer Successful',
           `₿${transferAmount.toLocaleString()} transferred from ${fromAccount} to ${toAccount}`,
@@ -124,7 +151,7 @@ export default function TransferModal({
           }
         );
       } else {
-        const errorMsg = response.message || 'Unknown error occurred';
+        const errorMsg = destinationResponse.message || 'Failed to record destination transaction';
         showError('Transfer Failed', errorMsg);
       }
     } catch (error) {
