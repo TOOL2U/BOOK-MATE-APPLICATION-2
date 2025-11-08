@@ -9,10 +9,12 @@ import {
   RefreshControl,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
+import LogoBM from '../components/LogoBM';
 
 export default function UploadScreen() {
   const [loading, setLoading] = useState(false);
@@ -115,6 +117,12 @@ export default function UploadScreen() {
           />
         }
       >
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <LogoBM size={64} />
+        </View>
+        
+        {/* Header */}
         <Text style={styles.title}>Upload Receipt</Text>
         <Text style={styles.subtitle}>
           Take a photo or select from gallery to process your receipt
@@ -126,7 +134,10 @@ export default function UploadScreen() {
             onPress={takePhoto}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>📷 Take Photo</Text>
+            <View style={styles.buttonContent}>
+              <Ionicons name="camera" size={24} color={COLORS.BLACK} />
+              <Text style={styles.buttonText}>Take Photo</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -134,7 +145,10 @@ export default function UploadScreen() {
             onPress={pickImage}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>🖼️ Choose from Gallery</Text>
+            <View style={styles.buttonContent}>
+              <Ionicons name="images" size={24} color={COLORS.BLACK} />
+              <Text style={styles.buttonText}>Choose from Gallery</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -176,6 +190,17 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    justifyContent: 'center',
+    gap: 12,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'MadeMirage-Regular',
@@ -199,6 +224,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     ...SHADOWS.YELLOW_GLOW,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   buttonText: {
     color: COLORS.BLACK,

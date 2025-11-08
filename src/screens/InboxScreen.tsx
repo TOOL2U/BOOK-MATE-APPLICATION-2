@@ -13,6 +13,7 @@ import { COLORS, SHADOWS } from '../config/theme';
 import type { TransactionWithRow } from '../types';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
+import LogoBM from '../components/LogoBM';
 
 export default function InboxScreen() {
   const [loading, setLoading] = useState(true);
@@ -102,7 +103,13 @@ export default function InboxScreen() {
           />
         }
       >
-        <Text style={styles.title}>Inbox</Text>
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <LogoBM size={64} />
+        </View>
+        
+        {/* Header */}
+        <Text style={styles.title}>Activity</Text>
         <Text style={styles.subtitle}>
           {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
         </Text>
@@ -194,11 +201,21 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {

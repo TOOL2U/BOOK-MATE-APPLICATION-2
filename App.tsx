@@ -3,14 +3,16 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import * as Font from 'expo-font';
+import * as Haptics from 'expo-haptics';
 import { OptionsProvider } from './src/contexts/OptionsContext';
 import { ConnectivityBadge } from './src/components/ConnectivityBadge';
 import { offlineQueue } from './src/services/offlineQueue';
+import AnimatedTabIcon from './src/components/AnimatedTabIcon';
 
 // Screens
+import SplashScreen from './src/screens/SplashScreen';
 import UploadScreen from './src/screens/UploadScreen';
 import ManualEntryScreen from './src/screens/ManualEntryScreen';
 import BalanceScreen from './src/screens/BalanceScreen';
@@ -32,6 +34,7 @@ const loadFonts = async () => {
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -47,12 +50,23 @@ export default function App() {
     initializeApp();
   }, []);
 
+  // Handle splash screen finish
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  // Show loading indicator while fonts are loading (before splash)
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000' }}>
         <ActivityIndicator size="large" color="#FFF02B" />
       </View>
     );
+  }
+
+  // Show branded splash screen after fonts load
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
   return (
@@ -95,13 +109,29 @@ export default function App() {
                 marginTop: 5,
               },
             }}
+            screenListeners={{
+              tabPress: () => {
+                // Haptic feedback on tab press (iOS only)
+                if (Platform.OS === 'ios') {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+              },
+            }}
           >
             <Tab.Screen
               name="Manual"
               component={ManualEntryScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="create-outline" size={22} color={color} />
+                tabBarIcon: ({ color, size, focused }) => (
+                  <AnimatedTabIcon
+                    focused={focused}
+                    color={color}
+                    size={22}
+                    name="create-outline"
+                    // Enable Lottie when using Development Build or TestFlight
+                    // useLottie={true}
+                    // lottieSource={require('./assets/lottie/pen.json')}
+                  />
                 ),
               }}
             />
@@ -109,8 +139,13 @@ export default function App() {
               name="Upload"
               component={UploadScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="camera" size={22} color={color} />
+                tabBarIcon: ({ color, size, focused }) => (
+                  <AnimatedTabIcon
+                    focused={focused}
+                    color={color}
+                    size={22}
+                    name="camera"
+                  />
                 ),
               }}
             />
@@ -118,8 +153,13 @@ export default function App() {
               name="Balance"
               component={BalanceScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="wallet-outline" size={22} color={color} />
+                tabBarIcon: ({ color, size, focused }) => (
+                  <AnimatedTabIcon
+                    focused={focused}
+                    color={color}
+                    size={22}
+                    name="wallet-outline"
+                  />
                 ),
               }}
             />
@@ -127,8 +167,14 @@ export default function App() {
               name="P&L"
               component={PLScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
-                  <MaterialCommunityIcons name="chart-line" size={22} color={color} />
+                tabBarIcon: ({ color, size, focused }) => (
+                  <AnimatedTabIcon
+                    focused={focused}
+                    color={color}
+                    size={22}
+                    iconType="material"
+                    name="chart-line"
+                  />
                 ),
               }}
             />
@@ -136,8 +182,13 @@ export default function App() {
               name="Activity"
               component={InboxScreen}
               options={{
-                tabBarIcon: ({ color, size }) => (
-                  <Ionicons name="pulse-outline" size={22} color={color} />
+                tabBarIcon: ({ color, size, focused }) => (
+                  <AnimatedTabIcon
+                    focused={focused}
+                    color={color}
+                    size={22}
+                    name="pulse-outline"
+                  />
                 ),
               }}
             />

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
 import type { PLData } from '../types';
+import LogoBM from '../components/LogoBM';
 
 // Local interfaces for modal compatibility
 interface OverheadExpense {
@@ -229,6 +230,12 @@ export default function PLScreen() {
           />
         }
       >
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <LogoBM size={64} />
+        </View>
+        
+        {/* Header */}
         <Text style={styles.title}>P&L Dashboard</Text>
         <Text style={styles.subtitle}>Profit & Loss Overview</Text>
 
@@ -354,11 +361,21 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {

@@ -15,6 +15,7 @@ import type { Balance } from '../types';
 import TransferModal from '../components/TransferModal';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
+import LogoBM from '../components/LogoBM';
 
 export default function BalanceScreen() {
   const [loading, setLoading] = useState(true);
@@ -115,6 +116,12 @@ export default function BalanceScreen() {
           />
         }
       >
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <LogoBM size={64} />
+        </View>
+        
+        {/* Header */}
         <Text style={styles.title}>Balance</Text>
         <Text style={styles.subtitle}>Track your bank and cash balances</Text>
 
@@ -302,11 +309,21 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {

@@ -16,6 +16,7 @@ import CustomPicker from '../components/CustomPicker';
 import SearchableDropdown from '../components/SearchableDropdown';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
+import LogoBM from '../components/LogoBM';
 
 export default function ManualEntryScreen() {
   const [loading, setLoading] = useState(false);
@@ -247,6 +248,12 @@ export default function ManualEntryScreen() {
             />
           }
         >
+        {/* Logo */}
+        <View style={styles.logoContainer}>
+          <LogoBM size={64} />
+        </View>
+        
+        {/* Header */}
         <Text style={styles.title}>Manual Entry</Text>
         <Text style={styles.subtitle}>Enter transaction details manually</Text>
 
@@ -417,6 +424,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 1,
+  },
   loadingText: {
     fontSize: 16,
     fontFamily: 'Aileron-Regular',
@@ -426,11 +437,17 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
