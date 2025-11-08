@@ -1,12 +1,10 @@
 // =========================================
-// BACKEND SPEC v9.0: Transfer Test
+// BACKEND V9.1: Transfer Test
 // =========================================
-// Schema Update: Transfer moved to Data!F2
-// Required fields: timestamp, fromAccount, toAccount, transactionType, 
-//                  typeOfOperation, amount, ref
-// Backend handles dual-entry generation automatically
-// Does NOT affect P&L calculations
-// Must appear in Transactions tab and sync to ledger
+// Two-row pattern as specified in MOBILE_APP_TRANSFER_UPDATE_V9.1.md
+// Row A: Source (debit) - money leaving
+// Row B: Destination (credit) - money entering
+// Both rows must have matching ref ID
 
 const apiBaseUrl = 'https://accounting.siamoon.com';
 const API_URL = `${apiBaseUrl}/api/sheets`;
@@ -19,75 +17,113 @@ const getMonthAbbreviation = (monthNumber) => {
 };
 
 async function testTransfer() {
-  console.log('\n🧪 Testing Transfer Feature (Backend v9.0 Spec)\n');
+  console.log('\n🧪 Testing Transfer Feature (Backend V9.1 Spec)\n');
 
   const today = new Date();
-  const timestamp = new Date().toISOString();
   const refId = `T-${today.getFullYear()}-${String(Date.now()).slice(-6)}`;
   const fromAccount = 'Cash - Family';
   const toAccount = 'Bank Transfer - Bangkok Bank - Shaun Ducker';
-  const amount = 50000; // Using PM's example amount
+  const amount = 500; // Using 500 THB as per spec example
 
   console.log('📋 Transfer Details:');
   console.log(`   From: ${fromAccount}`);
   console.log(`   To: ${toAccount}`);
   console.log(`   Amount: ₿${amount.toLocaleString()}`);
-  console.log(`   Ref: ${refId}`);
-  console.log(`   Timestamp: ${timestamp}\n`);
+  console.log(`   Ref: ${refId}\n`);
 
   // ========================================
-  // Backend v9.0 Transfer Structure
+  // Row A: Source Transaction (DEBIT)
   // ========================================
-  console.log('📤 Creating Transfer transaction...');
-  const transferTransaction = {
-    timestamp: timestamp,                    // ISO timestamp (required)
+  console.log('📤 Creating Row A: Source (money leaving)...');
+  const sourceTransaction = {
     day: today.getDate().toString(),
     month: getMonthAbbreviation(today.getMonth() + 1),
     year: today.getFullYear().toString(),
-    property: 'Family',
-    fromAccount: fromAccount,                // Source account (v9.0 required)
-    toAccount: toAccount,                    // Destination account (v9.0 required)
-    transactionType: 'Transfer',             // Must be "Transfer" (v9.0 required)
-    typeOfOperation: 'Transfer',             // Must be "Transfer" (required)
-    typeOfPayment: fromAccount,              // Still required by backend (use fromAccount)
-    amount: amount,                          // Transfer amount (v9.0 required)
-    detail: `Transfer from ${fromAccount} to ${toAccount}`,
-    ref: refId,                              // Transaction reference (required)
-    debit: 0,                                // Backend calculates dual-entry
-    credit: 0,                               // Backend calculates dual-entry
+    property: '',                                // OPTIONAL for transfers
+    typeOfOperation: 'Transfer',                 // From Data!F2
+    typeOfPayment: fromAccount,                  // Source account
+    detail: `Transfer to ${toAccount}`,          // Must contain "Transfer to"
+    ref: refId,                                  // REQUIRED - same for both rows
+    debit: amount,                               // Money LEAVING
+    credit: 0,                                   // Must be 0
   };
 
-  console.log('Transfer Transaction:', JSON.stringify(transferTransaction, null, 2));
+  console.log('Source Transaction:', JSON.stringify(sourceTransaction, null, 2));
 
   try {
-    const response = await fetch(API_URL, {
+    const sourceResponse = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(transferTransaction),
+      body: JSON.stringify(sourceTransaction),
     });
 
-    const result = await response.json();
+    const sourceResult = await sourceResponse.json();
     
-    if (!response.ok) {
-      console.error('❌ Transfer FAILED:', result.message || 'Unknown error');
-      console.error('Full response:', JSON.stringify(result, null, 2));
+    if (!sourceResponse.ok) {
+      console.error('❌ Row A FAILED:', sourceResult.error || sourceResult.message || 'Unknown error');
+      console.error('Full response:', JSON.stringify(sourceResult, null, 2));
       return;
     }
     
-    console.log('✅ Transfer created successfully');
-    console.log('Response:', JSON.stringify(result, null, 2));
+    console.log('✅ Row A created successfully\n');
+  } catch (error) {
+    console.error('❌ Row A network error:', error.message);
+    return;
+  }
+
+  // ========================================
+  // Row B: Destination Transaction (CREDIT)
+  // ========================================
+  console.log('📥 Creating Row B: Destination (money entering)...');
+  const destinationTransaction = {
+    day: today.getDate().toString(),
+    month: getMonthAbbreviation(today.getMonth() + 1),
+    year: today.getFullYear().toString(),
+    property: '',                                // OPTIONAL for transfers
+    typeOfOperation: 'Transfer',                 // Same as Row A
+    typeOfPayment: toAccount,                    // Destination account
+    detail: `Transfer from ${fromAccount}`,      // Must contain "Transfer from"
+    ref: refId,                                  // SAME ref as Row A
+    debit: 0,                                    // Must be 0
+    credit: amount,                              // Money ENTERING
+  };
+
+  console.log('Destination Transaction:', JSON.stringify(destinationTransaction, null, 2));
+
+  try {
+    const destinationResponse = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(destinationTransaction),
+    });
+
+    const destinationResult = await destinationResponse.json();
+    
+    if (!destinationResponse.ok) {
+      console.error('❌ Row B FAILED:', destinationResult.error || destinationResult.message || 'Unknown error');
+      console.error('Full response:', JSON.stringify(destinationResult, null, 2));
+      return;
+    }
+    
+    console.log('✅ Row B created successfully');
     console.log('\n🎉 TRANSFER COMPLETE!');
-    console.log('\n📊 Expected Results:');
-    console.log('   ✓ Transaction appears in Transactions tab');
-    console.log('   ✓ Located in Data!F2 (not Revenues or Expenses)');
-    console.log('   ✓ Backend generates dual-entry structure for ledger');
-    console.log('   ✓ NOT included in P&L totals');
-    console.log('   ✓ Syncs cleanly to ledger');
-    console.log(`   ✓ ${fromAccount} balance decreased by ₿${amount.toLocaleString()}`);
-    console.log(`   ✓ ${toAccount} balance increased by ₿${amount.toLocaleString()}\n`);
+    console.log('\n📊 V9.1 Compliance Checklist:');
+    console.log('   ✓ Two rows created with matching ref:', refId);
+    console.log('   ✓ typeOfOperation = "Transfer" (from Data!F2)');
+    console.log('   ✓ property field blank (optional for transfers)');
+    console.log('   ✓ Row A: debit =', amount, ', credit = 0');
+    console.log('   ✓ Row B: debit = 0, credit =', amount);
+    console.log('   ✓ detail contains "Transfer to" / "Transfer from"');
+    console.log('\n📈 Expected Backend Behavior:');
+    console.log('   ✓ Appears in Transactions tab');
+    console.log('   ✓ Located in Data!F2 category');
+    console.log('   ✓ Excluded from P&L revenue/expense totals');
+    console.log('   ✓ Updates Balance Summary correctly');
+    console.log(`   ✓ ${fromAccount}: -₿${amount.toLocaleString()}`);
+    console.log(`   ✓ ${toAccount}: +₿${amount.toLocaleString()}\n`);
     
   } catch (error) {
-    console.error('❌ Network error:', error.message);
+    console.error('❌ Row B network error:', error.message);
   }
 }
 

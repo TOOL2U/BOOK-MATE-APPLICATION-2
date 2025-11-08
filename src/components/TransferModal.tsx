@@ -86,40 +86,60 @@ export default function TransferModal({
     setLoading(true);
     try {
       const today = new Date();
-      const timestamp = new Date().toISOString();
       const refId = `T-${today.getFullYear()}-${String(Date.now()).slice(-6)}`; // e.g., T-2025-123456
 
-      // BACKEND SPEC v9.0: Transfer with required fields
-      // - Located in Data!F2 (not part of Revenues or Expenses)
-      // - Must include: fromAccount, toAccount, transactionType, typeOfOperation, amount, ref
-      // - Creates dual-entry structure for ledger sync
-      // - Does NOT affect P&L calculations
-      // - Still requires typeOfPayment for backend validation (legacy field)
+      // BACKEND V9.1 SPEC: Transfer = Two-Row Pattern
+      // - typeOfOperation: "Transfer" (from Data!F2)
+      // - Row A: Source (debit), Row B: Destination (credit)
+      // - Both rows MUST have same ref ID
+      // - Property field is OPTIONAL for transfers
+      // - Detail must contain "Transfer to" or "Transfer from"
       
-      const transferData = {
-        timestamp: timestamp,
+      // Row A: Source Transaction (Money Leaving - DEBIT)
+      const sourceTransaction = {
         day: today.getDate().toString(),
         month: getMonthAbbreviation(today.getMonth() + 1),
         year: today.getFullYear().toString(),
-        property: 'Family', // Default property for transfers
-        fromAccount: fromAccount, // Source account (v9.0 required)
-        toAccount: toAccount, // Destination account (v9.0 required)
-        transactionType: 'Transfer', // Must be "Transfer" (v9.0 required)
-        typeOfOperation: 'Transfer', // Must be "Transfer" (required)
-        typeOfPayment: fromAccount, // Still required by backend (use fromAccount)
-        amount: transferAmount, // Transfer amount (v9.0 required)
-        detail: note || `Transfer from ${fromAccount} to ${toAccount}`,
-        ref: refId, // Transaction reference (required)
-        debit: 0, // Backend will calculate dual-entry
-        credit: 0, // Backend will calculate dual-entry
+        property: '', // OPTIONAL for transfers (V9.1)
+        typeOfOperation: 'Transfer', // Must be "Transfer" from Data!F2
+        typeOfPayment: fromAccount, // Source account
+        detail: note || `Transfer to ${toAccount}`, // Must contain "Transfer to"
+        ref: refId, // REQUIRED - links both rows
+        debit: transferAmount, // Money LEAVING source
+        credit: 0, // Must be 0 for source
       };
 
-      console.log('📤 Submitting transfer:', transferData);
+      // Row B: Destination Transaction (Money Entering - CREDIT)
+      const destinationTransaction = {
+        day: today.getDate().toString(),
+        month: getMonthAbbreviation(today.getMonth() + 1),
+        year: today.getFullYear().toString(),
+        property: '', // OPTIONAL for transfers (V9.1)
+        typeOfOperation: 'Transfer', // Must be "Transfer" from Data!F2
+        typeOfPayment: toAccount, // Destination account
+        detail: note || `Transfer from ${fromAccount}`, // Must contain "Transfer from"
+        ref: refId, // SAME ref as Row A
+        debit: 0, // Must be 0 for destination
+        credit: transferAmount, // Money ENTERING destination
+      };
 
-      // Submit transfer transaction
-      const response = await apiService.submitTransaction(transferData);
+      console.log('📤 Submitting transfer Row A (source):', sourceTransaction);
+
+      // Submit Row A (source)
+      const sourceResponse = await apiService.submitTransaction(sourceTransaction);
       
-      if (response.ok) {
+      if (!sourceResponse.ok) {
+        const errorMsg = sourceResponse.message || 'Failed to record source transaction';
+        showError('Transfer Failed', errorMsg);
+        return;
+      }
+
+      console.log('✅ Row A submitted, now submitting Row B (destination):', destinationTransaction);
+
+      // Submit Row B (destination)
+      const destinationResponse = await apiService.submitTransaction(destinationTransaction);
+      
+      if (destinationResponse.ok) {
         showSuccess(
           'Transfer Successful',
           `₿${transferAmount.toLocaleString()} transferred from ${fromAccount} to ${toAccount}`,
@@ -136,8 +156,8 @@ export default function TransferModal({
           }
         );
       } else {
-        const errorMsg = response.message || 'Transfer failed';
-        showError('Transfer Failed', errorMsg);
+        const errorMsg = destinationResponse.message || 'Failed to record destination transaction';
+        showError('Transfer Failed', `Source recorded but destination failed: ${errorMsg}`);
       }
     } catch (error) {
       showError('Transfer Failed', error instanceof Error ? error.message : 'Network error');
