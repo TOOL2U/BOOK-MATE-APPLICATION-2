@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
 import type { Transaction } from '../types';
@@ -19,6 +20,7 @@ import { useBrandedAlert } from '../hooks/useBrandedAlert';
 import LogoBM from '../components/LogoBM';
 
 export default function ManualEntryScreen() {
+  const isFocused = useIsFocused(); // Track if screen is focused
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -93,6 +95,13 @@ export default function ManualEntryScreen() {
   useEffect(() => {
     fetchDropdownOptions();
   }, []);
+
+  // Auto-refresh dropdown options when screen comes into focus
+  useEffect(() => {
+    if (isFocused) {
+      fetchDropdownOptions();
+    }
+  }, [isFocused]);
 
   const handleSubmit = async () => {
     // Comprehensive validation
