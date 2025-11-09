@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS } from '../config/theme';
 
+// FIX (2025-11-09): Updated to match webapp API response format
+// See: MOBILE_TEAM_PROPERTY_PERSON_FIX.md
 interface PropertyPersonExpense {
-  property: string;
-  person: string;
-  amount: number;
-  monthly?: number[]; // Array of 12 months (0-11)
+  name: string;        // Property name (e.g., "Alesia House", "Lanna House")
+  expense: number;     // Expense amount for this property
+  percentage: number;  // Percentage of total expenses
 }
 
 const MONTH_NAMES = [
@@ -34,8 +35,6 @@ export default function PropertyPersonModal({
   total,
   period,
 }: PropertyPersonModalProps) {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
@@ -43,46 +42,10 @@ export default function PropertyPersonModal({
     }).format(amount);
   };
 
-  const getDisplayedExpenses = () => {
-    if (period === 'year') {
-      return expenses;
-    }
-    
-    // For monthly period, use direct month index mapping (0-11 for Jan-Dec)
-    const monthlyExpenses = expenses.map(expense => {
-      // Ensure monthly array exists and has valid data
-      if (!expense.monthly || !Array.isArray(expense.monthly) || expense.monthly.length < 12) {
-        console.warn(`Invalid monthly data for property/person expense: ${expense.property} - ${expense.person}`);
-        return {
-          property: expense.property,
-          person: expense.person,
-          amount: 0
-        };
-      }
-      
-      const monthlyAmount = expense.monthly[selectedMonth] || 0;
-      
-      return {
-        property: expense.property,
-        person: expense.person,
-        amount: monthlyAmount
-      };
-    }).filter(expense => expense.amount > 0);
-    
-    return monthlyExpenses;
-  };
-
-  const getDisplayedTotal = () => {
-    if (period === 'year') {
-      return total;
-    }
-    
-    const displayedExpenses = getDisplayedExpenses();
-    return displayedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  };
-
-  const displayedExpenses = getDisplayedExpenses();
-  const displayedTotal = getDisplayedTotal();
+  // FIX (2025-11-09): Simplified - API now returns pre-calculated data
+  // No need for month selection or manual calculations
+  const displayedExpenses = expenses.filter(e => e.expense > 0);
+  const displayedTotal = total;
 
   return (
     <Modal
@@ -94,54 +57,23 @@ export default function PropertyPersonModal({
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>
-            {period === 'month' ? 'Monthly' : 'Yearly'} Property Person Expenses
+            {period === 'month' ? 'Monthly' : 'Yearly'} Property/Person Expenses
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Month Picker - Only show for monthly view */}
-        {period === 'month' && (
-          <View style={styles.monthPickerContainer}>
-            <Text style={styles.monthPickerLabel}>
-              Select Month: {MONTH_NAMES[selectedMonth]}
-            </Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.monthPicker}
-              contentContainerStyle={styles.monthPickerContent}
-            >
-              {MONTH_NAMES.map((month, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.monthButton,
-                    selectedMonth === index && styles.monthButtonActive
-                  ]}
-                  onPress={() => setSelectedMonth(index)}
-                >
-                  <Text style={[
-                    styles.monthButtonText,
-                    selectedMonth === index && styles.monthButtonTextActive
-                  ]}>
-                    {MONTH_ABBREV[index]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+        {/* FIX (2025-11-09): Removed month picker - API handles period filtering */}
 
         <ScrollView style={styles.content}>
           {displayedExpenses.map((expense, index) => (
             <View key={index} style={styles.expenseItem}>
               <View style={styles.expenseInfo}>
-                <Text style={styles.property}>{expense.property}</Text>
-                <Text style={styles.person}>{expense.person}</Text>
+                <Text style={styles.property}>{expense.name}</Text>
+                <Text style={styles.percentage}>{expense.percentage.toFixed(1)}%</Text>
               </View>
-              <Text style={styles.expenseAmount}>{formatCurrency(expense.amount)}</Text>
+              <Text style={styles.expenseAmount}>{formatCurrency(expense.expense)}</Text>
             </View>
           ))}
         </ScrollView>
@@ -240,7 +172,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Aileron-Bold',
     color: COLORS.TEXT_PRIMARY,
   },
-  person: {
+  percentage: {
     fontSize: 14,
     fontFamily: 'Aileron-Light',
     color: COLORS.TEXT_SECONDARY,

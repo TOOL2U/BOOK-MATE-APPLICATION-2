@@ -235,96 +235,52 @@ export const apiService = {
     }
   },
 
-  async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
+  async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; totalExpense?: number; period?: string; error?: string}> {
     try {
-      // Get options data for property breakdown
-      const optionsResult = await this.getOptions();
+      // FIX (2025-11-09): Use correct endpoint as specified by webapp team
+      // See: MOBILE_TEAM_PROPERTY_PERSON_FIX.md
+      // Correct endpoint: /api/pnl/property-person
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com';
+      const response = await fetch(`${baseUrl}/api/pnl/property-person?period=${period}`);
       
-      if (!optionsResult || !optionsResult.data) {
-        console.warn('Options API returned no data');
-        return { ok: false, error: 'No options data available' };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Property/Person API error:', errorText);
+        return { ok: false, error: `API error: ${response.status}` };
       }
 
-      // Define PropertyPersonExpense interface
-      interface PropertyPersonExpense {
-        property: string;
-        person: string;
-        amount: number;
-        monthly: number[];
-      }
-
-      // Get P&L data for all months to get proper totals
-      const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-      const monthlyPnLTotals = Array(12).fill(0);
+      const result = await response.json();
       
-      // Fetch P&L data for each month (no hardcoding)
-      for (let i = 0; i < 12; i++) {
-        try {
-          const monthPnL = await this.getPnL(monthNames[i]);
-          if (monthPnL && monthPnL.data && monthPnL.data.month) {
-            monthlyPnLTotals[i] = monthPnL.data.month.propertyPersonExpense || 0;
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch P&L for ${monthNames[i]}:`, error);
-          monthlyPnLTotals[i] = 0;
-        }
+      if (!result.ok || !result.data) {
+        console.warn('Property/Person API returned no data:', result);
+        return { ok: false, error: result.error || 'No data available' };
       }
 
-      // Collect specific property expenses from propertiesRich (excluding Family)
-      const specificPropertyExpenses: PropertyPersonExpense[] = [];
-      const monthlyTotalsSpecificProperties = Array(12).fill(0);
+      // Expected format from webapp:
+      // {
+      //   ok: true,
+      //   success: true,
+      //   data: [
+      //     { name: "Alesia House", expense: 12500.00, percentage: 28.5 },
+      //     { name: "Lanna House", expense: 8200.00, percentage: 18.3 },
+      //     ...
+      //   ],
+      //   period: "month",
+      //   totalExpense: 44753.00,
+      //   timestamp: "2025-11-09T10:30:00.000Z"
+      // }
 
-      if (optionsResult.data.propertiesRich && Array.isArray(optionsResult.data.propertiesRich)) {
-        optionsResult.data.propertiesRich
-          .filter((prop: any) => prop && prop.name && prop.name !== 'Family')
-          .forEach((prop: any) => {
-            const monthlyArray = prop.monthly || Array(12).fill(0);
-            const amount = period === 'month' ? (monthlyArray[10] || 0) : (prop.yearTotal || 0); // Current display month
-            
-            specificPropertyExpenses.push({
-              property: prop.name,
-              person: 'Property Owner',
-              amount: amount,
-              monthly: monthlyArray
-            });
-
-            // Track monthly totals for Family calculation
-            for (let i = 0; i < 12; i++) {
-              monthlyTotalsSpecificProperties[i] += monthlyArray[i] || 0;
-            }
-          });
-      }
-
-      // Calculate Family monthly amounts as remainder for each month (NO HARDCODING)
-      // Family = P&L Total (per month) - Sum of all specific properties (per month)
-      const familyMonthlyArray = Array(12).fill(0);
+      console.log(`Property/Person expenses (${period}):`, result.data.length, 'properties');
       
-      for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-        // For each month: Family = Monthly P&L Total - Sum(Specific Properties for that month)
-        familyMonthlyArray[monthIndex] = Math.max(0, 
-          monthlyPnLTotals[monthIndex] - monthlyTotalsSpecificProperties[monthIndex]
-        );
-      }
-
-      const familyCurrentAmount = period === 'month' ? 
-        familyMonthlyArray[10] : // November for monthly view
-        familyMonthlyArray.reduce((sum, amt) => sum + amt, 0); // Year total for yearly view
-
-      // Add Family property with calculated remainder for each month
-      specificPropertyExpenses.push({
-        property: 'Family',
-        person: 'Property Owner',
-        amount: familyCurrentAmount,
-        monthly: familyMonthlyArray
-      });
-
-      // Sort to match P&L page display order (highest amounts first)
-      specificPropertyExpenses.sort((a, b) => b.amount - a.amount);
-
-      return { ok: true, data: specificPropertyExpenses };
+      return { 
+        ok: true, 
+        data: result.data,
+        totalExpense: result.totalExpense,
+        period: result.period
+      };
     } catch (error) {
-      console.error('Property/person expenses fetch error:', error);
-      return { ok: false, error: error instanceof Error ? error.message : 'Property/person expenses fetch failed' };
+      console.error('Property/Person expenses fetch error:', error);
+      return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },
 

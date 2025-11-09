@@ -19,11 +19,12 @@ interface OverheadExpense {
   amount: number;
 }
 
+// FIX (2025-11-09): Updated to match webapp API response format
+// See: MOBILE_TEAM_PROPERTY_PERSON_FIX.md
 interface PropertyPersonExpense {
-  property: string;
-  person: string;
-  amount: number;
-  monthly?: number[]; // Array of 12 months (0-11)
+  name: string;        // Property name (e.g., "Alesia House", "Lanna House")
+  expense: number;     // Expense amount for this property
+  percentage: number;  // Percentage of total expenses
 }
 import { COLORS, SHADOWS } from '../config/theme';
 import { Card } from '../components/ui/Card';
