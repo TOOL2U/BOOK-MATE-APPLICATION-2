@@ -173,8 +173,11 @@ export class BalanceAuditService {
     const appInflow = app?.inflow || 0;
     const sheetOutflow = sheet?.outflow || 0;
     const appOutflow = app?.outflow || 0;
-    const sheetNetChange = sheet?.netChange || (sheetInflow - sheetOutflow);
-    const appNetChange = app?.netChange || (appInflow - appOutflow);
+    // FIX (2025-11-09): Outflow is already negative, so add it directly
+    // OLD (WRONG): netChange = inflow - outflow
+    // NEW (CORRECT): netChange = inflow + outflow
+    const sheetNetChange = sheet?.netChange || (sheetInflow + sheetOutflow);
+    const appNetChange = app?.netChange || (appInflow + appOutflow);
     const openingBalance = sheet?.openingBalance || app?.openingBalance || 0;
 
     // Calculate differences

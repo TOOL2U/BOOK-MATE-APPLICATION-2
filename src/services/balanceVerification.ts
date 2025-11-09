@@ -69,8 +69,11 @@ export class BalanceVerificationService {
     const outflow = account.outflow || 0;
     const apiBalance = account.currentBalance || 0;
     
-    // Calculate expected balance: opening + inflow - outflow
-    const calculatedBalance = openingBalance + inflow - outflow;
+    // FIX (2025-11-09): Outflow is already negative from API, so add it directly
+    // OLD (WRONG): calculatedBalance = openingBalance + inflow - outflow
+    // NEW (CORRECT): calculatedBalance = openingBalance + inflow + outflow
+    // Example: 1,245,976 + 0 + (-198,117) = 1,047,859 ✅
+    const calculatedBalance = openingBalance + inflow + outflow;
     const difference = apiBalance - calculatedBalance;
     
     // More lenient validation - consider valid if difference is reasonable
