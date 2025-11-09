@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS } from '../config/theme';
+import CategoryDetailModal from './CategoryDetailModal';
 
 // FIX (2025-11-09): Updated to match webapp API response format
 // See: MOBILE_TEAM_PROPERTY_PERSON_FIX.md
@@ -35,6 +36,9 @@ export default function PropertyPersonModal({
   total,
   period,
 }: PropertyPersonModalProps) {
+  const [categoryDetailVisible, setCategoryDetailVisible] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<string>('');
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
@@ -46,6 +50,11 @@ export default function PropertyPersonModal({
   // No need for month selection or manual calculations
   const displayedExpenses = expenses.filter(e => e.expense > 0);
   const displayedTotal = total;
+
+  const handlePropertyPress = (propertyName: string) => {
+    setSelectedProperty(propertyName);
+    setCategoryDetailVisible(true);
+  };
 
   return (
     <Modal
@@ -68,13 +77,18 @@ export default function PropertyPersonModal({
 
         <ScrollView style={styles.content}>
           {displayedExpenses.map((expense, index) => (
-            <View key={index} style={styles.expenseItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.expenseItem}
+              onPress={() => handlePropertyPress(expense.name)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.property}>{expense.name}</Text>
               <View style={styles.expenseRight}>
                 <Text style={styles.expenseAmount}>{formatCurrency(expense.expense)}</Text>
                 <Text style={styles.percentage}>{expense.percentage.toFixed(1)}%</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
@@ -83,6 +97,15 @@ export default function PropertyPersonModal({
           <Text style={styles.totalAmount}>{formatCurrency(displayedTotal)}</Text>
         </View>
       </View>
+
+      {/* Category Detail Modal */}
+      <CategoryDetailModal
+        visible={categoryDetailVisible}
+        onClose={() => setCategoryDetailVisible(false)}
+        categoryName={selectedProperty}
+        period={period}
+        filterType="property"
+      />
     </Modal>
   );
 }

@@ -18,6 +18,7 @@ interface CategoryDetailModalProps {
   onClose: () => void;
   categoryName: string;
   period: 'month' | 'year';
+  filterType?: 'category' | 'property'; // 'category' = typeOfOperation, 'property' = property field
 }
 
 export default function CategoryDetailModal({
@@ -25,6 +26,7 @@ export default function CategoryDetailModal({
   onClose,
   categoryName,
   period,
+  filterType = 'category', // Default to category filtering for overhead expenses
 }: CategoryDetailModalProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,21 +49,33 @@ export default function CategoryDetailModal({
       console.log('CategoryDetailModal: Response:', response.ok, 'Data count:', response.data?.length);
       
       if (response.ok && response.data && Array.isArray(response.data)) {
-        console.log('CategoryDetailModal: Looking for category:', categoryName);
-        console.log('CategoryDetailModal: Sample typeOfOperation values:', 
-          response.data.slice(0, 5).map((t: any) => t.typeOfOperation)
+        console.log('CategoryDetailModal: Looking for:', categoryName, 'filterType:', filterType);
+        console.log('CategoryDetailModal: Sample values:', 
+          response.data.slice(0, 5).map((t: any) => ({
+            typeOfOperation: t.typeOfOperation,
+            property: t.property
+          }))
         );
         
-        // Filter transactions by category (typeOfOperation)
-        // Match exact category name or if category is contained in typeOfOperation
+        // Filter transactions based on filterType
         const filtered = response.data.filter((t: any) => {
-          const matches = t.typeOfOperation === categoryName || 
-                         t.typeOfOperation?.includes(categoryName) ||
-                         categoryName.includes(t.typeOfOperation);
+          let matches = false;
+          
+          if (filterType === 'property') {
+            // Filter by property field (for Property/Person expenses)
+            matches = t.property === categoryName || 
+                     t.property?.includes(categoryName) ||
+                     categoryName.includes(t.property);
+          } else {
+            // Filter by typeOfOperation field (for Overhead expenses)
+            matches = t.typeOfOperation === categoryName || 
+                     t.typeOfOperation?.includes(categoryName) ||
+                     categoryName.includes(t.typeOfOperation);
+          }
           
           if (matches) {
             console.log('CategoryDetailModal: Matched transaction:', {
-              typeOfOperation: t.typeOfOperation,
+              field: filterType === 'property' ? t.property : t.typeOfOperation,
               detail: t.detail,
               debit: t.debit
             });
