@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   totalCard: {
     backgroundColor: COLORS.YELLOW,
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 0,
     marginBottom: 24,
     ...SHADOWS.YELLOW_GLOW,
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   balanceCard: {
     backgroundColor: COLORS.SURFACE_1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: 'transparent',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.YELLOW,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   transferButton: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 24,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.YELLOW,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 0,
     minWidth: 100,
     alignItems: 'center',
   },
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: COLORS.SURFACE_1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     marginBottom: 16,
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   verificationCard: {
     backgroundColor: COLORS.SURFACE_1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     marginBottom: 12,

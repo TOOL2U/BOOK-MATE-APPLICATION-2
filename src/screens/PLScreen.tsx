@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   kpiCard: {
     backgroundColor: COLORS.SURFACE_1,
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 0,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.YELLOW,
     borderWidth: 1,

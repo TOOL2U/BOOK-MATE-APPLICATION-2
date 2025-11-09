@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 8,
+    borderRadius: 0,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.YELLOW,

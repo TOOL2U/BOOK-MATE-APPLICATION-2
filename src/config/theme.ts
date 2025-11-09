@@ -38,10 +38,10 @@ export const SPACING = {
 };
 
 export const RADIUS = {
-  SM: 8,
-  MD: 12,
-  LG: 16,
-  XL: 24,
+  SM: 0,
+  MD: 0,
+  LG: 0,
+  XL: 0,
 };
 
 export const SHADOWS = {

@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   transactionCard: {
     backgroundColor: COLORS.SURFACE_1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },

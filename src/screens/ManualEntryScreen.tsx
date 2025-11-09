@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SURFACE_1,
     color: COLORS.TEXT_PRIMARY,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 0,
     fontSize: 16,
     fontFamily: 'Aileron-Regular',
     borderWidth: 1,
@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     ...SHADOWS.YELLOW_GLOW,
   },

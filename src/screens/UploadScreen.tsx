@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 0,
     alignItems: 'center',
     ...SHADOWS.YELLOW_GLOW,
   },
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     padding: 16,
     backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 12,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
