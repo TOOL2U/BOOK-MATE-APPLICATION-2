@@ -41,18 +41,45 @@ export default function CategoryDetailModal({
     setError(null);
     
     try {
-      // Fetch all transactions (or for specific month if needed)
-      const response = await apiService.getTransactions(period === 'month' ? getMonthKey() : undefined);
+      // Fetch all transactions from inbox
+      const response = await apiService.getInbox();
       
-      if (response && Array.isArray(response)) {
-        // Filter transactions by category (typeOfOperation)
-        const filtered = response.filter((t: any) => 
-          t.typeOfOperation === categoryName || 
-          t.typeOfOperation?.includes(categoryName)
+      console.log('CategoryDetailModal: Response:', response.ok, 'Data count:', response.data?.length);
+      
+      if (response.ok && response.data && Array.isArray(response.data)) {
+        console.log('CategoryDetailModal: Looking for category:', categoryName);
+        console.log('CategoryDetailModal: Sample typeOfOperation values:', 
+          response.data.slice(0, 5).map((t: any) => t.typeOfOperation)
         );
+        
+        // Filter transactions by category (typeOfOperation)
+        // Match exact category name or if category is contained in typeOfOperation
+        const filtered = response.data.filter((t: any) => {
+          const matches = t.typeOfOperation === categoryName || 
+                         t.typeOfOperation?.includes(categoryName) ||
+                         categoryName.includes(t.typeOfOperation);
+          
+          if (matches) {
+            console.log('CategoryDetailModal: Matched transaction:', {
+              typeOfOperation: t.typeOfOperation,
+              detail: t.detail,
+              debit: t.debit
+            });
+          }
+          
+          return matches;
+        });
+        
+        console.log('CategoryDetailModal: Filtered count:', filtered.length);
+        
+        // NOTE: Don't filter by month here - the overhead expenses data is already
+        // filtered by period (month/year) when the user tapped the category.
+        // We just show all matching transactions for that category.
         setTransactions(filtered);
+        
+        console.log('CategoryDetailModal: Final transaction count:', filtered.length);
       } else {
-        setError('No transactions found');
+        setError(response.error || 'No transactions found');
         setTransactions([]);
       }
     } catch (err) {
@@ -64,12 +91,6 @@ export default function CategoryDetailModal({
     }
   };
 
-  const getMonthKey = () => {
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const currentMonth = new Date().getMonth();
-    return monthNames[currentMonth];
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
@@ -77,16 +98,21 @@ export default function CategoryDetailModal({
     }).format(amount);
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (transaction: any) => {
     try {
-      const date = new Date(dateStr);
+      // Prefer day/month/year fields if available (matching InboxScreen format)
+      if (transaction.day && transaction.month && transaction.year) {
+        return `${transaction.day}/${transaction.month}/${transaction.year}`;
+      }
+      // Otherwise try parsing date string
+      const date = new Date(transaction.date);
       return date.toLocaleDateString('en-GB', { 
         day: '2-digit', 
         month: 'short', 
         year: 'numeric' 
       });
     } catch {
-      return dateStr;
+      return transaction.date || 'Unknown date';
     }
   };
 
@@ -135,7 +161,7 @@ export default function CategoryDetailModal({
             {transactions.map((transaction, index) => (
               <View key={index} style={styles.transactionItem}>
                 <View style={styles.transactionLeft}>
-                  <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
+                  <Text style={styles.transactionDate}>{formatDate(transaction)}</Text>
                   <Text style={styles.transactionDetail} numberOfLines={2}>
                     {transaction.detail || 'No description'}
                   </Text>
