@@ -158,77 +158,28 @@ export const apiService = {
     }
   },
 
-  async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; error?: string}> {
+  async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; totalExpense?: number; period?: string; error?: string}> {
     try {
-      // Get both P&L data (for accurate totals) and options data (for breakdown)
-      const [pnlResult, optionsResult] = await Promise.all([
-        this.getPnL('ALL'), // Get P&L data for accurate totals
-        this.getOptions()   // Get options data for expense breakdown
-      ]);
+      // FIX (2025-11-09): Use correct endpoint as specified by webapp team
+      // See: MOBILE_TEAM_OVERHEAD_EXPENSES_FIX.md
+      // Changed from /api/options (wrong) to /api/pnl/overhead-expenses (correct)
+      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com';
+      const response = await fetch(`${baseUrl}/api/pnl/overhead-expenses?period=${period}`);
       
-      if (!optionsResult || !optionsResult.data) {
-        console.warn('Options API returned no data');
-        return { ok: false, error: 'No options data available' };
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-
-      if (!optionsResult.data.typeOfOperations || !Array.isArray(optionsResult.data.typeOfOperations)) {
-        console.warn('typeOfOperations not found or not an array in options data');
-        return { ok: false, error: 'No expense categories available' };
-      }
-
-      // Get overhead expenses breakdown from options API
-      const overheadCategories = optionsResult.data.typeOfOperations
-        .filter((op: any) => op && op.name && (op.name.startsWith('EXP -') || op.name.startsWith('Exp -')))
-        .map((op: any) => {
-          return {
-            category: op.name,
-            amount: period === 'month' ? (op.monthly?.[10] || 0) : (op.yearTotal || 0), // November = index 10
-            monthly: op.monthly || Array(12).fill(0)
-          };
-        })
-        .filter((expense: any) => {
-          if (period === 'year') {
-            return expense.amount > 0;
-          } else {
-            return expense.monthly && expense.monthly.some((amount: number) => amount > 0);
-          }
-        });
-
-      // If we have P&L data, use it to get the accurate total and scale breakdown accordingly
-      if (pnlResult && pnlResult.data) {
-        const pnlTotal = period === 'month' ? pnlResult.data.month?.overheads : pnlResult.data.year?.overheads;
-        const breakdownTotal = overheadCategories.reduce((sum: number, item: any) => sum + item.amount, 0);
-        
-        // Scale individual items proportionally to match P&L total
-        if (pnlTotal && breakdownTotal > 0 && Math.abs(pnlTotal - breakdownTotal) > 1) {
-          const scaleFactor = pnlTotal / breakdownTotal;
-          console.log(`Scaling overhead breakdown by ${scaleFactor.toFixed(4)} to match P&L total: ${pnlTotal}`);
-          
-          overheadCategories.forEach((expense: any) => {
-            const originalAmount = expense.amount;
-            expense.amount = Math.round(expense.amount * scaleFactor);
-            
-            // Scale monthly array proportionally for all months
-            if (expense.monthly && Array.isArray(expense.monthly)) {
-              expense.monthly = expense.monthly.map((monthAmount: number) => 
-                Math.round(monthAmount * scaleFactor)
-              );
-            }
-          });
-          
-          // Verify the scaling worked correctly
-          const scaledTotal = overheadCategories.reduce((sum: number, item: any) => sum + item.amount, 0);
-          if (Math.abs(scaledTotal - pnlTotal) > 1) {
-            console.warn(`Scaling verification failed: expected ${pnlTotal}, got ${scaledTotal}`);
-          }
-        } else if (pnlTotal && breakdownTotal === 0) {
-          console.warn('No overhead expense data available for scaling');
-        } else if (!pnlTotal) {
-          console.warn('No P&L total available for overhead scaling');
-        }
-      }
-
-      return { ok: true, data: overheadCategories };
+      
+      const result = await response.json();
+      
+      console.log(`Overhead expenses (${period}):`, result.data?.length || 0, 'categories');
+      
+      return {
+        ok: true,
+        data: result.data || [],
+        totalExpense: result.totalExpense,
+        period: result.period
+      };
     } catch (error) {
       console.error('Overhead expenses fetch error:', error);
       return { ok: false, error: error instanceof Error ? error.message : 'Overhead expenses fetch failed' };

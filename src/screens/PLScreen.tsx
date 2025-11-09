@@ -14,9 +14,12 @@ import type { PLData } from '../types';
 import LogoBM from '../components/LogoBM';
 
 // Local interfaces for modal compatibility
+// FIX (2025-11-09): Updated to match webapp API response format
+// See: MOBILE_TEAM_OVERHEAD_EXPENSES_FIX.md
 interface OverheadExpense {
-  category: string;
-  amount: number;
+  name: string;        // Category name (e.g., "Utilities - Gas", "Marketing")
+  expense: number;     // Expense amount for this category
+  percentage: number;  // Percentage of total overhead expenses
 }
 
 // FIX (2025-11-09): Updated to match webapp API response format
