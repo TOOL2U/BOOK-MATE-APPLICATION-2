@@ -102,11 +102,9 @@ export default function PLScreen() {
     try {
       const response = await apiService.getOverheadExpenses(period);
       if (response.ok && response.data && Array.isArray(response.data)) {
-        // The API service already returns the correctly formatted data
-        // No need for additional transformation - data is already in format:
-        // [{ category: string, amount: number }, ...]
         setOverheadExpenses(response.data);
-        const total = response.data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        // FIX: Use totalExpense from API response, or calculate from expense field (not amount)
+        const total = response.totalExpense || response.data.reduce((sum: number, item: any) => sum + (item.expense || 0), 0);
         setOverheadTotal(total);
       } else {
         // Handle case where no data is available
@@ -133,11 +131,9 @@ export default function PLScreen() {
     try {
       const response = await apiService.getPropertyPersonExpenses(period);
       if (response.ok && response.data && Array.isArray(response.data)) {
-        // The API service already returns the correctly formatted data
-        // No need for additional transformation - data is already in format:
-        // [{ property: string, person: string, amount: number, monthly: number[] }, ...]
         setPropertyExpenses(response.data);
-        const total = response.data.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+        // FIX: Use totalExpense from API response, or calculate from expense field (not amount)
+        const total = response.totalExpense || response.data.reduce((sum: number, item: any) => sum + (item.expense || 0), 0);
         setPropertyTotal(total);
       } else {
         // Handle case where no data is available

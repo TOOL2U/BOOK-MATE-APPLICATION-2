@@ -69,11 +69,11 @@ export default function PropertyPersonModal({
         <ScrollView style={styles.content}>
           {displayedExpenses.map((expense, index) => (
             <View key={index} style={styles.expenseItem}>
-              <View style={styles.expenseInfo}>
-                <Text style={styles.property}>{expense.name}</Text>
+              <Text style={styles.property}>{expense.name}</Text>
+              <View style={styles.expenseRight}>
+                <Text style={styles.expenseAmount}>{formatCurrency(expense.expense)}</Text>
                 <Text style={styles.percentage}>{expense.percentage.toFixed(1)}%</Text>
               </View>
-              <Text style={styles.expenseAmount}>{formatCurrency(expense.expense)}</Text>
             </View>
           ))}
         </ScrollView>
@@ -164,24 +164,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
   },
-  expenseInfo: {
-    flex: 1,
-  },
   property: {
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
     color: COLORS.TEXT_PRIMARY,
+    flex: 1,
   },
-  percentage: {
-    fontSize: 14,
-    fontFamily: 'Aileron-Light',
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: 2,
+  expenseRight: {
+    alignItems: 'flex-end',
   },
   expenseAmount: {
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
     color: COLORS.YELLOW,
+  },
+  percentage: {
+    fontSize: 14,
+    fontFamily: 'Aileron-Light',
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 4,
   },
   footer: {
     flexDirection: 'row',
