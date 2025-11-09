@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS } from '../config/theme';
+import CategoryDetailModal from './CategoryDetailModal';
 
 // FIX (2025-11-09): Updated to match webapp API response format
 // See: MOBILE_TEAM_OVERHEAD_EXPENSES_FIX.md
@@ -25,6 +26,9 @@ export default function OverheadExpensesModal({
   total,
   period,
 }: OverheadExpensesModalProps) {
+  const [categoryDetailVisible, setCategoryDetailVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
       style: 'currency',
@@ -35,6 +39,11 @@ export default function OverheadExpensesModal({
   // FIX (2025-11-09): Simplified - API now handles period filtering
   // No need for month picker or manual calculations
   const displayedExpenses = expenses.filter(e => e.expense > 0);
+
+  const handleCategoryPress = (categoryName: string) => {
+    setSelectedCategory(categoryName);
+    setCategoryDetailVisible(true);
+  };
 
   return (
     <Modal
@@ -55,13 +64,18 @@ export default function OverheadExpensesModal({
 
         <ScrollView style={styles.content}>
           {displayedExpenses.map((expense, index) => (
-            <View key={index} style={styles.expenseItem}>
+            <TouchableOpacity 
+              key={index} 
+              style={styles.expenseItem}
+              onPress={() => handleCategoryPress(expense.name)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.expenseCategory}>{expense.name}</Text>
               <View style={styles.expenseRight}>
                 <Text style={styles.expenseAmount}>{formatCurrency(expense.expense)}</Text>
                 <Text style={styles.expensePercentage}>{expense.percentage.toFixed(1)}%</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
@@ -70,6 +84,14 @@ export default function OverheadExpensesModal({
           <Text style={styles.totalAmount}>{formatCurrency(total)}</Text>
         </View>
       </View>
+
+      {/* Category Detail Modal */}
+      <CategoryDetailModal
+        visible={categoryDetailVisible}
+        onClose={() => setCategoryDetailVisible(false)}
+        categoryName={selectedCategory}
+        period={period}
+      />
     </Modal>
   );
 }
