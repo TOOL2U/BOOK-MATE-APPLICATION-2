@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import LogoBM from '../components/LogoBM';
 
 export default function ManualEntryScreen() {
   const isFocused = useIsFocused(); // Track if screen is focused
+  const scrollViewRef = useRef<ScrollView>(null); // Ref for ScrollView
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -246,6 +247,11 @@ export default function ManualEntryScreen() {
     fetchDropdownOptions().finally(() => setRefreshing(false));
   };
 
+  const scrollToBottom = () => {
+    // Scroll to bottom when description field is focused
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  };
+
   return (
     <View style={styles.container}>
       {optionsLoading ? (
@@ -254,7 +260,8 @@ export default function ManualEntryScreen() {
           <Text style={styles.loadingText}>Loading form options...</Text>
         </View>
       ) : (
-        <ScrollView 
+        <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.content}
           refreshControl={
             <RefreshControl
@@ -354,6 +361,7 @@ export default function ManualEntryScreen() {
             style={[styles.input, { borderColor: COLORS.YELLOW }]}
             value={formData.detail}
             onChangeText={(text) => setFormData({ ...formData, detail: text })}
+            onFocus={scrollToBottom}
             placeholder="Enter description"
             placeholderTextColor={COLORS.TEXT_SECONDARY}
           />
