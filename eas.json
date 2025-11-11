@@ -10,18 +10,33 @@
         "resourceClass": "m-medium"
       },
       "android": {
-        "buildType": "developmentClient"
+        "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://accounting.siamoon.com/api"
       }
     },
     "production": {
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "bundleIdentifier": "com.siamoon.bookmate"
+      },
+      "android": {
+        "resourceClass": "medium",
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://accounting.siamoon.com/api"
       }
     }
   },

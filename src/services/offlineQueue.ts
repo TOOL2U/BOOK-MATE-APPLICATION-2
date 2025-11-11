@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
 import type { PostSheetsRequest } from '../types/api';
+import Logger from './logger';
 
 const OFFLINE_QUEUE_KEY = '@BookMate:OfflineQueue';
 
@@ -20,7 +21,7 @@ class OfflineQueue {
       const storedQueue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
       this.queue = storedQueue ? JSON.parse(storedQueue) : [];
     } catch (error) {
-      console.error('Failed to load offline queue:', error);
+      Logger.error('Failed to load offline queue:', error);
       this.queue = [];
     }
   }
@@ -36,7 +37,7 @@ class OfflineQueue {
     this.queue.push(queuedRequest);
     await this.saveQueue();
     
-    console.log(`Added transaction to offline queue: ${queuedRequest.id}`);
+    Logger.debug(`Added transaction to offline queue: ${queuedRequest.id}`);
     
     // Try to process queue immediately
     this.processQueue();
@@ -55,12 +56,12 @@ class OfflineQueue {
     try {
       for (const request of [...this.queue]) {
         try {
-          console.log(`Processing queued transaction: ${request.id}`);
+          Logger.debug(`Processing queued transaction: ${request.id}`);
           
           const result = await apiService.postSheets(request.payload);
           
           if (result.ok) {
-            console.log(`Successfully submitted queued transaction: ${request.id}`);
+            Logger.debug(`Successfully submitted queued transaction: ${request.id}`);
             processedIds.push(request.id);
           } else {
             // Increment retry count
@@ -68,18 +69,18 @@ class OfflineQueue {
             
             // Remove after 3 failed attempts
             if (request.retryCount >= 3) {
-              console.warn(`Removing failed transaction after 3 retries: ${request.id}`);
+              Logger.warn(`Removing failed transaction after 3 retries: ${request.id}`);
               processedIds.push(request.id);
             }
           }
         } catch (error) {
-          console.error(`Failed to process queued transaction ${request.id}:`, error);
+          Logger.error(`Failed to process queued transaction ${request.id}:`, error);
           
           request.retryCount++;
           
           // Remove after 3 failed attempts
           if (request.retryCount >= 3) {
-            console.warn(`Removing failed transaction after 3 retries: ${request.id}`);
+            Logger.warn(`Removing failed transaction after 3 retries: ${request.id}`);
             processedIds.push(request.id);
           }
         }
@@ -109,14 +110,14 @@ class OfflineQueue {
   async clearQueue(): Promise<void> {
     this.queue = [];
     await this.saveQueue();
-    console.log('Offline queue cleared');
+    Logger.debug('Offline queue cleared');
   }
 
   private async saveQueue(): Promise<void> {
     try {
       await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(this.queue));
     } catch (error) {
-      console.error('Failed to save offline queue:', error);
+      Logger.error('Failed to save offline queue:', error);
     }
   }
 }

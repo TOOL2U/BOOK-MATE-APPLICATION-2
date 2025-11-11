@@ -4,6 +4,7 @@ import {
   PnLResponse, PostSheetsRequest, PostSheetsResponse, TransactionsResponse
 } from "../types/api";
 import { getMonthNumber } from "../utils/dateUtils";
+import Logger from "./logger";
 
 const validMonth = (m?: string | null): MonthKey => {
   if (!m || typeof m !== 'string') return "ALL";
@@ -172,7 +173,7 @@ export const apiService = {
       
       const result = await response.json();
       
-      console.log(`Overhead expenses (${period}):`, result.data?.length || 0, 'categories');
+      Logger.debug(`Overhead expenses (${period}):`, result.data?.length || 0, 'categories');
       
       return {
         ok: true,
@@ -181,7 +182,7 @@ export const apiService = {
         period: result.period
       };
     } catch (error) {
-      console.error('Overhead expenses fetch error:', error);
+      Logger.error('Overhead expenses fetch error:', error);
       return { ok: false, error: error instanceof Error ? error.message : 'Overhead expenses fetch failed' };
     }
   },
@@ -196,14 +197,14 @@ export const apiService = {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Property/Person API error:', errorText);
+        Logger.error('Property/Person API error:', errorText);
         return { ok: false, error: `API error: ${response.status}` };
       }
 
       const result = await response.json();
       
       if (!result.ok || !result.data) {
-        console.warn('Property/Person API returned no data:', result);
+        Logger.warn('Property/Person API returned no data:', result);
         return { ok: false, error: result.error || 'No data available' };
       }
 
@@ -221,7 +222,7 @@ export const apiService = {
       //   timestamp: "2025-11-09T10:30:00.000Z"
       // }
 
-      console.log(`Property/Person expenses (${period}):`, result.data.length, 'properties');
+      Logger.debug(`Property/Person expenses (${period}):`, result.data.length, 'properties');
       
       return { 
         ok: true, 
@@ -230,7 +231,7 @@ export const apiService = {
         period: result.period
       };
     } catch (error) {
-      console.error('Property/Person expenses fetch error:', error);
+      Logger.error('Property/Person expenses fetch error:', error);
       return { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   },

@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import Logger from './logger';
 
 /**
  * BookMate Balance Audit Service
@@ -65,14 +66,14 @@ export class BalanceAuditService {
    * @returns Complete audit report with detailed findings
    */
   static async performFullAudit(monthFilter: string = 'ALL'): Promise<FullAuditReport> {
-    console.log(`🔍 Starting Balance Audit for month: ${monthFilter}`);
+    Logger.debug(`🔍 Starting Balance Audit for month: ${monthFilter}`);
     
     try {
       // Fetch data from both sources simultaneously using enhanced API service
       const [appResponse, sheetResponse] = await Promise.all([
         apiService.getBalance(monthFilter, 'app'),
         apiService.getBalance(monthFilter, 'sheets').catch(error => {
-          console.warn('Sheet API unavailable, using app data only:', error);
+          Logger.warn('Sheet API unavailable, using app data only:', error);
           return { items: [] };
         })
       ]);
@@ -109,11 +110,11 @@ export class BalanceAuditService {
 
       fullReport.totalBalanceDifference = fullReport.totalAppBalance - fullReport.totalSheetBalance;
 
-      console.log(`✅ Audit Complete: ${fullReport.perfectMatches}/${fullReport.totalAccounts} perfect matches`);
+      Logger.debug(`✅ Audit Complete: ${fullReport.perfectMatches}/${fullReport.totalAccounts} perfect matches`);
       return fullReport;
 
     } catch (error) {
-      console.error('❌ Audit failed:', error);
+      Logger.error('❌ Audit failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Balance audit failed: ${errorMessage}`);
     }
