@@ -6,12 +6,17 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "owner": "siamoon",
     "splash": {
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
-      "**/*"
+      "assets/fonts/**",
+      "assets/icon.png",
+      "assets/images/**",
+      "assets/lottie/**"
     ],
     "ios": {
       "supportsTablet": true,
@@ -24,6 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#121212"
       },
       "package": "com.siamoon.bookmate",
@@ -48,7 +54,26 @@
           "photosPermission": "Allow BookMate to access your photos to upload receipts."
         }
       ],
-      "expo-asset"
-    ]
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1"
+          },
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
   }
 }

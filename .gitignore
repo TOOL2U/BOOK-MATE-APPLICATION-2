@@ -1,5 +1,6 @@
 # OSX
 .DS_Store
+**/.DS_Store
 
 # Backup files
 *BACKUP*
@@ -46,7 +47,10 @@ web-build/
 
 # Environment
 .env
+.env*
+!.env.example
 .env.local
+.env.production
 
 # Bundle artifacts
 *.jsbundle
