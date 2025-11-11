@@ -38,7 +38,8 @@
         "gradleCommand": ":app:bundleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://accounting.siamoon.com/api"
+        "EXPO_PUBLIC_API_BASE_URL": "https://accounting.siamoon.com/api",
+        "EXPO_PUBLIC_AUTH_SECRET": "REPLACE_WITH_YOUR_ACTUAL_WEBHOOK_SECRET"
       }
     }
   },
