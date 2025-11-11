@@ -13,7 +13,7 @@ OUTPUT_DIR="./assets/screenshots/ios"
 mkdir -p "$OUTPUT_DIR"
 
 # Get the booted simulator ID
-SIMULATOR_ID=$(xcrun simctl list devices | grep "Booted" | head -1 | grep -o "\([A-Z0-9\-]*\)" | head -1)
+SIMULATOR_ID=$(xcrun simctl list devices | grep "Booted" | head -1 | grep -E -o '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}')
 
 if [ -z "$SIMULATOR_ID" ]; then
     echo "❌ No simulator is currently booted."

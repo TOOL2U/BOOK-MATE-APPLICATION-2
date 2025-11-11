@@ -25,7 +25,7 @@ echo ""
 
 # Find the simulator ID for iPhone 16 Pro Max
 echo "🔍 Finding simulator..."
-SIMULATOR_ID=$(xcrun simctl list devices available | grep "$SIMULATOR_NAME" | head -1 | grep -o "\([A-Z0-9\-]*\)" | head -1)
+SIMULATOR_ID=$(xcrun simctl list devices available | grep "$SIMULATOR_NAME" | head -1 | grep -E -o '[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}')
 
 if [ -z "$SIMULATOR_ID" ]; then
     echo "❌ Could not find $SIMULATOR_NAME simulator"
