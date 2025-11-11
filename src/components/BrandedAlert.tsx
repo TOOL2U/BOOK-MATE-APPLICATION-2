@@ -62,10 +62,9 @@ export default function BrandedAlert({
   const typeStyles = getTypeStyles();
 
   const handleConfirm = () => {
+    onClose(); // Close modal first
     if (onConfirm) {
-      onConfirm();
-    } else {
-      onClose();
+      onConfirm(); // Then execute callback
     }
   };
 
