@@ -7,7 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
+import { useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
 import type { TransactionWithRow } from '../types';
@@ -15,10 +18,15 @@ import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
 import LogoBM from '../components/LogoBM';
 
+type InboxScreenRouteProp = RouteProp<{ Inbox: { highlightLatest?: boolean } }, 'Inbox'>;
+
 export default function InboxScreen() {
+  const route = useRoute<InboxScreenRouteProp>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<TransactionWithRow[]>([]);
+  const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
+  const highlightAnim = useState(new Animated.Value(0))[0];
 
   // Branded alert hook
   const {
@@ -36,6 +44,29 @@ export default function InboxScreen() {
       
       if (response.ok && response.data) {
         setTransactions(response.data || []);
+        
+        // If navigated with highlightLatest flag, highlight the first (newest) transaction
+        if (route.params?.highlightLatest && response.data && response.data.length > 0) {
+          const latestRow = response.data[0].rowNumber;
+          setHighlightedRow(latestRow);
+          
+          // Animate highlight
+          Animated.sequence([
+            Animated.timing(highlightAnim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: false,
+            }),
+            Animated.delay(2000),
+            Animated.timing(highlightAnim, {
+              toValue: 0,
+              duration: 500,
+              useNativeDriver: false,
+            }),
+          ]).start(() => {
+            setHighlightedRow(null);
+          });
+        }
       } else {
         setTransactions([]);
       }
@@ -52,6 +83,14 @@ export default function InboxScreen() {
   useEffect(() => {
     fetchInbox();
   }, []);
+
+  // Watch for navigation with highlightLatest parameter
+  useEffect(() => {
+    if (route.params?.highlightLatest) {
+      // Refetch to get the latest transaction
+      fetchInbox();
+    }
+  }, [route.params?.highlightLatest]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -123,51 +162,68 @@ export default function InboxScreen() {
           </View>
         ) : (
           <View style={styles.transactionList}>
-            {transactions.map((transaction) => (
-              <View key={transaction.rowNumber} style={styles.transactionCard}>
-                <View style={styles.transactionHeader}>
-                  <Text style={styles.transactionDate}>
-                    {transaction.day}/{transaction.month}/{transaction.year}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => handleDelete(transaction.rowNumber)}
-                    style={styles.deleteButton}
-                  >
-                    <Text style={styles.deleteButtonText}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
+            {transactions.map((transaction) => {
+              const isHighlighted = highlightedRow === transaction.rowNumber;
+              const backgroundColor = isHighlighted
+                ? highlightAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [COLORS.SURFACE_1, COLORS.YELLOW + '40'], // Yellow with 40% opacity
+                  })
+                : COLORS.SURFACE_1;
 
-                <Text style={styles.transactionDetail}>{transaction.detail}</Text>
+              return (
+                <Animated.View
+                  key={transaction.rowNumber}
+                  style={[
+                    styles.transactionCard,
+                    isHighlighted && styles.transactionCardHighlighted,
+                    { backgroundColor },
+                  ]}
+                >
+                  <View style={styles.transactionHeader}>
+                    <Text style={styles.transactionDate}>
+                      {transaction.day}/{transaction.month}/{transaction.year}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleDelete(transaction.rowNumber)}
+                      style={styles.deleteButton}
+                    >
+                      <Text style={styles.deleteButtonText}>🗑️</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                <View style={styles.transactionMeta}>
-                  <Text style={styles.metaText}>{transaction.property}</Text>
-                  <Text style={styles.metaText}>•</Text>
-                  <Text style={styles.metaText} numberOfLines={2}>
-                    {transaction.typeOfPayment}
-                  </Text>
-                </View>
+                  <Text style={styles.transactionDetail}>{transaction.detail}</Text>
 
-                <View style={styles.transactionFooter}>
-                  <Text style={styles.categoryText}>
-                    {transaction.typeOfOperation}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.amountText,
-                      transaction.debit > 0 ? styles.debitText : styles.creditText,
-                    ]}
-                  >
-                    {transaction.debit > 0
-                      ? `-${formatCurrency(transaction.debit)}`
-                      : `+${formatCurrency(transaction.credit)}`}
-                  </Text>
-                </View>
+                  <View style={styles.transactionMeta}>
+                    <Text style={styles.metaText}>{transaction.property}</Text>
+                    <Text style={styles.metaText}>•</Text>
+                    <Text style={styles.metaText} numberOfLines={2}>
+                      {transaction.typeOfPayment}
+                    </Text>
+                  </View>
 
-                {transaction.ref && (
-                  <Text style={styles.refText}>Ref: {transaction.ref}</Text>
-                )}
-              </View>
-            ))}
+                  <View style={styles.transactionFooter}>
+                    <Text style={styles.categoryText}>
+                      {transaction.typeOfOperation}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.amountText,
+                        transaction.debit > 0 ? styles.debitText : styles.creditText,
+                      ]}
+                    >
+                      {transaction.debit > 0
+                        ? `-${formatCurrency(transaction.debit)}`
+                        : `+${formatCurrency(transaction.credit)}`}
+                    </Text>
+                  </View>
+
+                  {transaction.ref && (
+                    <Text style={styles.refText}>Ref: {transaction.ref}</Text>
+                  )}
+                </Animated.View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -251,6 +307,11 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
+  },
+  transactionCardHighlighted: {
+    borderColor: COLORS.YELLOW,
+    borderWidth: 2,
+    ...SHADOWS.YELLOW_GLOW,
   },
   transactionHeader: {
     flexDirection: 'row',

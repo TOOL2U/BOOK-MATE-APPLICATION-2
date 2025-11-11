@@ -8,17 +8,28 @@ import {
   Modal,
   ActivityIndicator,
   Animated,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../config/theme';
 import type { Transaction } from '../types';
 import CustomPicker from './CustomPicker';
 import SearchableDropdown from './SearchableDropdown';
+import BrandedAlert from './BrandedAlert';
+import { useBrandedAlert } from '../hooks/useBrandedAlert';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface WizardManualEntryProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (data: Transaction) => Promise<void>;
+  onSubmit: (data: Transaction) => Promise<void | { ok: boolean; message?: string }>;
+  onSuccess?: () => void; // Callback after successful submission
   properties: string[];
   typeOfOperations: string[];
   typeOfPayments: string[];
@@ -29,6 +40,7 @@ export default function WizardManualEntry({
   visible,
   onClose,
   onSubmit,
+  onSuccess,
   properties,
   typeOfOperations,
   typeOfPayments,
@@ -37,6 +49,16 @@ export default function WizardManualEntry({
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [slideAnim] = useState(new Animated.Value(0));
+  const [fadeAnim] = useState(new Animated.Value(0)); // Fade animation for modal
+  const [scaleAnim] = useState(new Animated.Value(0.9)); // Scale animation for modal
+  const descriptionInputRef = React.useRef<TextInput>(null); // Ref for auto-focus
+  
+  const {
+    isVisible: alertVisible,
+    alertConfig,
+    showAlert,
+    hideAlert,
+  } = useBrandedAlert();
 
   // Get current month abbreviation
   const currentMonthIndex = new Date().getMonth();
@@ -47,16 +69,61 @@ export default function WizardManualEntry({
     day: new Date().getDate().toString(),
     month: currentMonth,
     year: new Date().getFullYear().toString(),
-    property: properties[0] || '',
+    property: 'Family',
     typeOfOperation: '',
-    typeOfPayment: '',
+    typeOfPayment: 'Bank Transfer - Krung Thai',
     detail: '',
     ref: '',
     debit: 0,
     credit: 0,
   });
 
-  const totalSteps = 4;
+  const totalSteps = 3; // Changed from 4 to 3 (removed ref step)
+
+  // Set default payment type only once when modal opens and typeOfPayments are loaded
+  const hasSetDefault = React.useRef(false);
+  React.useEffect(() => {
+    if (visible && typeOfPayments.length > 0 && !hasSetDefault.current) {
+      const defaultPayment = typeOfPayments.find(payment => 
+        payment.includes('Bank Transfer - Krung Thai')
+      ) || typeOfPayments[0];
+      setFormData(prev => ({ ...prev, typeOfPayment: defaultPayment }));
+      hasSetDefault.current = true;
+    }
+    
+    // Reset the flag when modal closes
+    if (!visible) {
+      hasSetDefault.current = false;
+    }
+  }, [visible, typeOfPayments]);
+
+  // Fade in animation when modal becomes visible
+  React.useEffect(() => {
+    if (visible) {
+      // Reset animations
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.9);
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset when closing
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.9);
+    }
+  }, [visible]);
 
   const animateTransition = (direction: 'forward' | 'backward') => {
     Animated.timing(slideAnim, {
@@ -72,6 +139,13 @@ export default function WizardManualEntry({
     if (currentStep < totalSteps) {
       animateTransition('forward');
       setCurrentStep(currentStep + 1);
+      
+      // Auto-focus description field when moving to step 3
+      if (currentStep + 1 === 3) {
+        setTimeout(() => {
+          descriptionInputRef.current?.focus();
+        }, 200); // Delay to allow animation to complete
+      }
     }
   };
 
@@ -85,10 +159,53 @@ export default function WizardManualEntry({
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Call the parent's submit handler
       await onSubmit(formData);
-      handleClose();
+      
+      // If we get here without error, the transaction was successful
+      showAlert({
+        title: 'Success!',
+        message: 'Transaction added successfully',
+        type: 'success',
+        onConfirm: () => {
+          hideAlert();
+          // Navigate first, then close modal with a slight delay
+          onSuccess?.();
+          setTimeout(() => {
+            handleClose();
+          }, 100);
+        },
+      });
     } catch (error) {
       console.error('Submit error:', error);
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to add transaction. Please try again.';
+      if (error instanceof Error) {
+        try {
+          // Try to extract error from HTTP error response
+          const match = error.message.match(/HTTP \d+ .+ :: (.+)/);
+          if (match) {
+            const errorBody = match[1];
+            try {
+              const parsed = JSON.parse(errorBody);
+              errorMessage = parsed.message || parsed.error || errorMessage;
+            } catch {
+              errorMessage = errorBody.length > 100 ? 'Server error occurred' : errorBody;
+            }
+          } else {
+            errorMessage = error.message;
+          }
+        } catch {
+          errorMessage = 'Network error occurred';
+        }
+      }
+      
+      showAlert({
+        title: 'Error',
+        message: errorMessage,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -100,9 +217,9 @@ export default function WizardManualEntry({
       day: new Date().getDate().toString(),
       month: currentMonth,
       year: new Date().getFullYear().toString(),
-      property: properties[0] || '',
+      property: 'Family',
       typeOfOperation: '',
-      typeOfPayment: '',
+      typeOfPayment: 'Bank Transfer - Krung Thai',
       detail: '',
       ref: '',
       debit: 0,
@@ -118,9 +235,7 @@ export default function WizardManualEntry({
       case 2:
         return formData.typeOfOperation && formData.typeOfPayment;
       case 3:
-        return formData.detail.trim() !== '';
-      case 4:
-        return formData.debit > 0 || formData.credit > 0;
+        return formData.detail.trim() !== '' && (formData.debit > 0 || formData.credit > 0);
       default:
         return false;
     }
@@ -204,120 +319,114 @@ export default function WizardManualEntry({
       <Text style={styles.stepTitle}>Category & Payment</Text>
 
       {/* Category */}
-      <SearchableDropdown
-        label="Category"
-        value={formData.typeOfOperation}
-        onValueChange={(value) => setFormData({ ...formData, typeOfOperation: value })}
-        items={typeOfOperations}
-        placeholder="Search category..."
-        required
-        dropdownPosition="top"
-      />
+      <View style={styles.dropdownWrapper}>
+        <SearchableDropdown
+          label="Category"
+          value={formData.typeOfOperation}
+          onValueChange={(value) => setFormData({ ...formData, typeOfOperation: value })}
+          items={typeOfOperations}
+          placeholder="Search category..."
+          required
+          dropdownPosition="top"
+          zIndex={9999}
+        />
+      </View>
 
       {/* Payment Type */}
-      <SearchableDropdown
+      <CustomPicker
         label="Payment Type"
-        value={formData.typeOfPayment}
+        selectedValue={formData.typeOfPayment}
         onValueChange={(value) => setFormData({ ...formData, typeOfPayment: value })}
         items={typeOfPayments}
-        placeholder="Search payment type..."
+        placeholder="Select payment type"
         required
-        dropdownPosition="top"
       />
     </Animated.View>
   );
 
   const renderStep3 = () => (
     <Animated.View style={[styles.stepContainer, { transform: [{ translateX: slideAnim }] }]}>
-      <Text style={styles.stepTitle}>Description</Text>
+      <Text style={styles.stepTitle}>Description & Amount</Text>
 
       <View style={styles.field}>
         <Text style={styles.label}>Description *</Text>
         <TextInput
+          ref={descriptionInputRef}
           style={[styles.input, styles.textArea]}
           value={formData.detail}
           onChangeText={(text) => setFormData({ ...formData, detail: text })}
           placeholder="Enter transaction description..."
           placeholderTextColor={COLORS.TEXT_SECONDARY}
           multiline
-          numberOfLines={4}
+          numberOfLines={2}
           textAlignVertical="top"
         />
       </View>
-    </Animated.View>
-  );
 
-  const renderStep4 = () => (
-    <Animated.View style={[styles.stepContainer, { transform: [{ translateX: slideAnim }] }]}>
-      <Text style={styles.stepTitle}>Amount & Reference</Text>
-
-      {/* Amount Fields */}
-      <View style={styles.row}>
-        <View style={styles.amountField}>
-          <Text style={styles.label}>Debit</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.debit === 0 ? '' : formData.debit.toString()}
-            onChangeText={(text) => {
-              if (text === '') {
-                setFormData({ ...formData, debit: 0 });
-                return;
-              }
-              const cleanText = text.replace(/[^0-9.]/g, '');
-              const decimalCount = (cleanText.match(/\./g) || []).length;
-              if (decimalCount <= 1) {
-                if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
-                  setFormData({ ...formData, debit: cleanText as any });
-                } else {
-                  const num = parseFloat(cleanText);
-                  setFormData({ ...formData, debit: isNaN(num) ? 0 : num });
-                }
-              }
-            }}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            placeholderTextColor={COLORS.TEXT_SECONDARY}
-          />
+      {/* Amount Field - Dynamic based on category */}
+      {formData.typeOfOperation && (
+        <View style={styles.field}>
+          {formData.typeOfOperation.startsWith('Revenue') ? (
+            <>
+              <Text style={[styles.label, styles.creditLabel]}>
+                Credit (Revenue) *
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={formData.credit === 0 ? '' : formData.credit.toString()}
+                onChangeText={(text) => {
+                  if (text === '') {
+                    setFormData({ ...formData, credit: 0, debit: 0 });
+                    return;
+                  }
+                  const cleanText = text.replace(/[^0-9.]/g, '');
+                  const decimalCount = (cleanText.match(/\./g) || []).length;
+                  if (decimalCount <= 1) {
+                    if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                      setFormData({ ...formData, credit: cleanText as any, debit: 0 });
+                    } else {
+                      const num = parseFloat(cleanText);
+                      setFormData({ ...formData, credit: isNaN(num) ? 0 : num, debit: 0 });
+                    }
+                  }
+                }}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={COLORS.TEXT_SECONDARY}
+              />
+            </>
+          ) : formData.typeOfOperation.startsWith('EXP') || formData.typeOfOperation.startsWith('OVERHEAD') ? (
+            <>
+              <Text style={[styles.label, styles.debitLabel]}>
+                Debit (Expense) *
+              </Text>
+              <TextInput
+                style={styles.input}
+                value={formData.debit === 0 ? '' : formData.debit.toString()}
+                onChangeText={(text) => {
+                  if (text === '') {
+                    setFormData({ ...formData, debit: 0, credit: 0 });
+                    return;
+                  }
+                  const cleanText = text.replace(/[^0-9.]/g, '');
+                  const decimalCount = (cleanText.match(/\./g) || []).length;
+                  if (decimalCount <= 1) {
+                    if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                      setFormData({ ...formData, debit: cleanText as any, credit: 0 });
+                    } else {
+                      const num = parseFloat(cleanText);
+                      setFormData({ ...formData, debit: isNaN(num) ? 0 : num, credit: 0 });
+                    }
+                  }
+                }}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={COLORS.TEXT_SECONDARY}
+              />
+            </>
+          ) : null}
         </View>
-        <View style={styles.amountField}>
-          <Text style={styles.label}>Credit</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.credit === 0 ? '' : formData.credit.toString()}
-            onChangeText={(text) => {
-              if (text === '') {
-                setFormData({ ...formData, credit: 0 });
-                return;
-              }
-              const cleanText = text.replace(/[^0-9.]/g, '');
-              const decimalCount = (cleanText.match(/\./g) || []).length;
-              if (decimalCount <= 1) {
-                if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
-                  setFormData({ ...formData, credit: cleanText as any });
-                } else {
-                  const num = parseFloat(cleanText);
-                  setFormData({ ...formData, credit: isNaN(num) ? 0 : num });
-                }
-              }
-            }}
-            keyboardType="decimal-pad"
-            placeholder="0.00"
-            placeholderTextColor={COLORS.TEXT_SECONDARY}
-          />
-        </View>
-      </View>
-
-      {/* Reference */}
-      <View style={styles.field}>
-        <Text style={styles.label}>Reference (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.ref}
-          onChangeText={(text) => setFormData({ ...formData, ref: text })}
-          placeholder="Enter reference number"
-          placeholderTextColor={COLORS.TEXT_SECONDARY}
-        />
-      </View>
+      )}
     </Animated.View>
   );
 
@@ -329,8 +438,6 @@ export default function WizardManualEntry({
         return renderStep2();
       case 3:
         return renderStep3();
-      case 4:
-        return renderStep4();
       default:
         return null;
     }
@@ -339,30 +446,46 @@ export default function WizardManualEntry({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>New Transaction</Text>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color={COLORS.TEXT_PRIMARY} />
-            </TouchableOpacity>
-          </View>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.overlay}
+          >
+            <Animated.View style={[
+              styles.modalContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ scale: scaleAnim }],
+              }
+            ]}>
+              {/* Header */}
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>New Transaction</Text>
+                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                  <Ionicons name="close" size={28} color={COLORS.TEXT_PRIMARY} />
+                </TouchableOpacity>
+              </View>
 
-          {/* Progress Bar */}
-          {renderProgressBar()}
+            {/* Progress Bar */}
+            {renderProgressBar()}
 
-          {/* Step Content */}
-          <View style={styles.content}>
-            {renderCurrentStep()}
-          </View>
+            {/* Step Content - Scrollable */}
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={styles.contentContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {renderCurrentStep()}
+            </ScrollView>
 
-          {/* Navigation Buttons */}
-          <View style={styles.footer}>
+            {/* Navigation Buttons */}
+            <View style={styles.footer}>
             {currentStep > 1 && (
               <TouchableOpacity
                 style={styles.backButton}
@@ -401,8 +524,22 @@ export default function WizardManualEntry({
               </TouchableOpacity>
             )}
           </View>
-        </View>
-      </View>
+        </Animated.View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+      </Animated.View>
+      
+      {/* Branded Alert */}
+      <BrandedAlert
+        visible={alertVisible}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        onClose={hideAlert}
+        onConfirm={alertConfig?.onConfirm}
+        confirmText={alertConfig?.confirmText}
+        cancelText={alertConfig?.cancelText}
+      />
     </Modal>
   );
 }
@@ -411,28 +548,34 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   modalContainer: {
-    width: '90%',
-    maxHeight: '80%',
+    width: '100%',
+    height: SCREEN_HEIGHT * 0.65, // Use 65% of screen height - more compact
     backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     borderWidth: 2,
     borderColor: COLORS.YELLOW,
+    marginTop: Platform.OS === 'ios' ? 140 : 100, // Position from top
+    overflow: 'visible', // Allow dropdowns to appear outside
     ...SHADOWS.YELLOW_GLOW,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
+    minHeight: 60,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: 'MadeMirage-Regular',
     color: COLORS.TEXT_PRIMARY,
   },
@@ -443,8 +586,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     gap: 8,
+    minHeight: 40,
   },
   progressDot: {
     width: 40,
@@ -460,34 +604,47 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    overflow: 'visible', // Allow dropdowns to appear outside
+  },
+  contentContainer: {
     padding: 20,
+    paddingBottom: 40, // Extra padding at bottom
+    overflow: 'visible', // Allow dropdowns to appear outside
   },
   stepContainer: {
-    flex: 1,
+    width: '100%',
+    overflow: 'visible', // Allow dropdowns to appear outside
+  },
+  dropdownWrapper: {
+    zIndex: 9999,
+    elevation: 9999,
+    marginBottom: 20,
   },
   stepTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: 'Aileron-Bold',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: 20,
   },
   field: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   row: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   dateField: {
     flex: 1,
+    minWidth: 0, // Allow flex shrinking
   },
   amountField: {
     flex: 1,
+    minWidth: 0, // Allow flex shrinking
   },
   label: {
     color: COLORS.TEXT_PRIMARY,
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
     marginBottom: 8,
@@ -497,30 +654,37 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: COLORS.SURFACE_2,
     color: COLORS.TEXT_PRIMARY,
-    padding: 12,
+    padding: 14,
     borderRadius: 0,
     fontSize: 16,
     fontFamily: 'Aileron-Regular',
     borderWidth: 1,
     borderColor: COLORS.BORDER,
+    minHeight: 48, // Ensure tappable area
   },
   textArea: {
-    height: 100,
+    height: 70,
     textAlignVertical: 'top',
+    paddingTop: 14,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
+    backgroundColor: COLORS.SURFACE_1,
+    minHeight: 70,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16, // Account for home indicator
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    minHeight: 48,
   },
   backButtonText: {
     color: COLORS.TEXT_PRIMARY,
@@ -532,9 +696,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORS.YELLOW,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 0,
+    minHeight: 48,
     ...SHADOWS.YELLOW_GLOW,
   },
   nextButtonText: {
@@ -547,9 +712,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORS.YELLOW,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 0,
+    minHeight: 48,
     ...SHADOWS.YELLOW_GLOW,
   },
   submitButtonText: {
@@ -559,5 +725,38 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  helperTextContainer: {
+    backgroundColor: COLORS.SURFACE_2,
+    padding: 12,
+    borderRadius: 0,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.YELLOW,
+  },
+  helperText: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
+  },
+  helperHighlight: {
+    color: COLORS.YELLOW,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  labelHighlight: {
+    color: COLORS.YELLOW,
+    fontSize: 12,
+    fontFamily: 'Aileron-Bold',
+  },
+  debitLabel: {
+    color: '#FF4444', // Red color
+  },
+  creditLabel: {
+    color: '#4CAF50', // Green color
+  },
+  inputDisabled: {
+    opacity: 0.4,
+    backgroundColor: COLORS.SURFACE_2,
   },
 });

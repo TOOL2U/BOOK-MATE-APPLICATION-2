@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: COLORS.SURFACE_1,
     borderRadius: 0,
-    maxHeight: 350,
+    maxHeight: 200, // Reduced from 350 to 200
     borderWidth: 1,
     borderColor: COLORS.YELLOW,
     zIndex: 1000,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     bottom: 70,
   },
   dropdownList: {
-    maxHeight: 320,
+    maxHeight: 180, // Reduced from 320 to 180
   },
   dropdownItem: {
     flexDirection: 'row',

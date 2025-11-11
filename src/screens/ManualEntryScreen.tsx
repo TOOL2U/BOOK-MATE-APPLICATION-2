@@ -8,8 +8,12 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
 import type { Transaction } from '../types';
@@ -18,13 +22,16 @@ import SearchableDropdown from '../components/SearchableDropdown';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
 import LogoBM from '../components/LogoBM';
+import WizardManualEntry from '../components/WizardManualEntry';
 
 export default function ManualEntryScreen() {
   const isFocused = useIsFocused(); // Track if screen is focused
+  const navigation = useNavigation<NavigationProp<any>>();
   const scrollViewRef = useRef<ScrollView>(null); // Ref for ScrollView
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(true);
+  const [wizardVisible, setWizardVisible] = useState(false);
   
   // Branded alert hook
   const {
@@ -81,7 +88,7 @@ export default function ManualEntryScreen() {
         // Set default values once options are loaded
         setFormData(prev => ({
           ...prev,
-          property: response.data.properties?.[0] || '',
+          property: 'Family', // Default to Family
           typeOfPayment: '', // Keep empty to show placeholder
           month: currentMonth, // Set current month (NOV)
         }));
@@ -174,7 +181,10 @@ export default function ManualEntryScreen() {
       const response = await apiService.submitTransaction(submissionData);
       
       if (response.ok) {
-        showSuccess('Success', 'Transaction added successfully!');
+        showSuccess('Success', 'Transaction added successfully!', () => {
+          // Navigate to Activity after user confirms
+          (navigation as any).navigate('Activity', { highlightLatest: true });
+        });
         // Reset form
         const currentMonthIndex = new Date().getMonth(); // 0-11
         const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -184,7 +194,7 @@ export default function ManualEntryScreen() {
           day: new Date().getDate().toString(),
           month: currentMonth,
           year: new Date().getFullYear().toString(),
-          property: properties[0] || '',
+          property: 'Family', // Default to Family
           typeOfOperation: '',
           typeOfPayment: '', // Keep empty to show placeholder
           detail: '',
@@ -224,6 +234,26 @@ export default function ManualEntryScreen() {
     }
   };
 
+  // Wizard-specific submit handler that throws errors for the wizard to catch
+  const handleWizardSubmit = async (data: Transaction) => {
+    // Ensure debit and credit are numbers before submitting
+    const submissionData = {
+      ...data,
+      debit: typeof data.debit === 'string' ? parseFloat(data.debit) || 0 : data.debit,
+      credit: typeof data.credit === 'string' ? parseFloat(data.credit) || 0 : data.credit,
+    };
+    
+    const response = await apiService.submitTransaction(submissionData);
+    
+    if (!response.ok) {
+      // Throw error with the response message so wizard can catch it
+      throw new Error(response.message || 'Failed to submit transaction');
+    }
+    
+    // If successful, return (wizard will show success message)
+    return response;
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     // Get current month abbreviation (NOV for November)
@@ -236,7 +266,7 @@ export default function ManualEntryScreen() {
       day: new Date().getDate().toString(),
       month: currentMonth,
       year: new Date().getFullYear().toString(),
-      property: properties[0] || '',
+      property: 'Family', // Default to Family
       typeOfOperation: '',
       typeOfPayment: '', // Keep empty to show placeholder
       detail: '',
@@ -253,24 +283,26 @@ export default function ManualEntryScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {optionsLoading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={COLORS.YELLOW} />
-          <Text style={styles.loadingText}>Loading form options...</Text>
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollViewRef}
-          contentContainerStyle={styles.content}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.YELLOW}
-            />
-          }
-        >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        {optionsLoading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={COLORS.YELLOW} />
+            <Text style={styles.loadingText}>Loading form options...</Text>
+          </View>
+        ) : (
+          <ScrollView
+            ref={scrollViewRef}
+            contentContainerStyle={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={COLORS.YELLOW}
+              />
+            }
+            keyboardShouldPersistTaps="handled"
+          >
         {/* Logo */}
         <View style={styles.logoContainer}>
           <LogoBM size={64} />
@@ -279,6 +311,15 @@ export default function ManualEntryScreen() {
         {/* Header */}
         <Text style={styles.title}>Manual Entry</Text>
         <Text style={styles.subtitle}>Enter transaction details manually</Text>
+
+        {/* Wizard Button */}
+        <TouchableOpacity
+          style={styles.wizardButton}
+          onPress={() => setWizardVisible(true)}
+        >
+          <Ionicons name="flash" size={20} color={COLORS.BLACK} />
+          <Text style={styles.wizardButtonText}>Quick Entry Wizard</Text>
+        </TouchableOpacity>
 
         {/* Date Fields */}
         <View style={styles.row}>
@@ -367,69 +408,70 @@ export default function ManualEntryScreen() {
           />
         </View>
 
-        {/* Amount Fields */}
-        <View style={styles.row}>
-          <View style={styles.amountField}>
-            <Text style={styles.label}>Debit</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.debit === 0 ? '' : formData.debit.toString()}
-              onChangeText={(text) => {
-                // Allow empty, or valid decimal number
-                if (text === '') {
-                  setFormData({ ...formData, debit: 0 });
-                  return;
-                }
-                // Allow only numbers and one decimal point
-                const cleanText = text.replace(/[^0-9.]/g, '');
-                // Count decimal points
-                const decimalCount = (cleanText.match(/\./g) || []).length;
-                if (decimalCount <= 1) {
-                  // If it ends with a decimal point, store as string temporarily
-                  if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
-                    setFormData({ ...formData, debit: cleanText as any });
-                  } else {
-                    const num = parseFloat(cleanText);
-                    setFormData({ ...formData, debit: isNaN(num) ? 0 : num });
-                  }
-                }
-              }}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={COLORS.TEXT_SECONDARY}
-            />
+        {/* Amount Field - Dynamic based on category */}
+        {formData.typeOfOperation && (
+          <View style={styles.field}>
+            {formData.typeOfOperation.startsWith('Revenue') ? (
+              <>
+                <Text style={[styles.label, styles.creditLabel]}>
+                  Credit (Revenue) *
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.credit === 0 ? '' : formData.credit.toString()}
+                  onChangeText={(text) => {
+                    if (text === '') {
+                      setFormData({ ...formData, credit: 0, debit: 0 });
+                      return;
+                    }
+                    const cleanText = text.replace(/[^0-9.]/g, '');
+                    const decimalCount = (cleanText.match(/\./g) || []).length;
+                    if (decimalCount <= 1) {
+                      if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                        setFormData({ ...formData, credit: cleanText as any, debit: 0 });
+                      } else {
+                        const num = parseFloat(cleanText);
+                        setFormData({ ...formData, credit: isNaN(num) ? 0 : num, debit: 0 });
+                      }
+                    }
+                  }}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={COLORS.TEXT_SECONDARY}
+                />
+              </>
+            ) : formData.typeOfOperation.startsWith('EXP') || formData.typeOfOperation.startsWith('OVERHEAD') ? (
+              <>
+                <Text style={[styles.label, styles.debitLabel]}>
+                  Debit (Expense) *
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.debit === 0 ? '' : formData.debit.toString()}
+                  onChangeText={(text) => {
+                    if (text === '') {
+                      setFormData({ ...formData, debit: 0, credit: 0 });
+                      return;
+                    }
+                    const cleanText = text.replace(/[^0-9.]/g, '');
+                    const decimalCount = (cleanText.match(/\./g) || []).length;
+                    if (decimalCount <= 1) {
+                      if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
+                        setFormData({ ...formData, debit: cleanText as any, credit: 0 });
+                      } else {
+                        const num = parseFloat(cleanText);
+                        setFormData({ ...formData, debit: isNaN(num) ? 0 : num, credit: 0 });
+                      }
+                    }
+                  }}
+                  keyboardType="decimal-pad"
+                  placeholder="0.00"
+                  placeholderTextColor={COLORS.TEXT_SECONDARY}
+                />
+              </>
+            ) : null}
           </View>
-          <View style={styles.amountField}>
-            <Text style={styles.label}>Credit</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.credit === 0 ? '' : formData.credit.toString()}
-              onChangeText={(text) => {
-                // Allow empty, or valid decimal number
-                if (text === '') {
-                  setFormData({ ...formData, credit: 0 });
-                  return;
-                }
-                // Allow only numbers and one decimal point
-                const cleanText = text.replace(/[^0-9.]/g, '');
-                // Count decimal points
-                const decimalCount = (cleanText.match(/\./g) || []).length;
-                if (decimalCount <= 1) {
-                  // If it ends with a decimal point, store as string temporarily
-                  if (cleanText.endsWith('.') || cleanText.endsWith('.0')) {
-                    setFormData({ ...formData, credit: cleanText as any });
-                  } else {
-                    const num = parseFloat(cleanText);
-                    setFormData({ ...formData, credit: isNaN(num) ? 0 : num });
-                  }
-                }
-              }}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={COLORS.TEXT_SECONDARY}
-            />
-          </View>
-        </View>
+        )}
 
         {/* Reference */}
         <View style={styles.field}>
@@ -458,6 +500,21 @@ export default function ManualEntryScreen() {
         </ScrollView>
       )}
       
+      {/* Wizard Modal */}
+      <WizardManualEntry
+        visible={wizardVisible}
+        onClose={() => setWizardVisible(false)}
+        onSubmit={handleWizardSubmit}
+        onSuccess={() => {
+          // Navigate to Activity after successful wizard submission
+          (navigation as any).navigate('Activity', { highlightLatest: true });
+        }}
+        properties={properties}
+        typeOfOperations={typeOfOperations}
+        typeOfPayments={typeOfPayments}
+        months={months}
+      />
+
       {/* Branded Alert */}
       <BrandedAlert
         visible={alertVisible}
@@ -470,6 +527,7 @@ export default function ManualEntryScreen() {
         cancelText={alertConfig?.cancelText}
       />
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -569,6 +627,56 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
+  },
+  wizardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.YELLOW,
+    padding: 16,
+    borderRadius: 0,
+    marginBottom: 24,
+    ...SHADOWS.YELLOW_GLOW,
+  },
+  wizardButtonText: {
+    color: COLORS.BLACK,
+    fontSize: 18,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  helperTextContainer: {
+    backgroundColor: COLORS.SURFACE_2,
+    padding: 12,
+    borderRadius: 0,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.YELLOW,
+  },
+  helperText: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
+  },
+  helperHighlight: {
+    color: COLORS.YELLOW,
+    fontFamily: 'Aileron-Bold',
+    fontWeight: '600',
+  },
+  labelHighlight: {
+    color: COLORS.YELLOW,
+    fontSize: 12,
+    fontFamily: 'Aileron-Bold',
+  },
+  debitLabel: {
+    color: '#FF4444', // Red color
+  },
+  creditLabel: {
+    color: '#4CAF50', // Green color
+  },
+  inputDisabled: {
+    opacity: 0.4,
+    backgroundColor: COLORS.SURFACE_2,
   },
 });
 
