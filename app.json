@@ -2,7 +2,7 @@
   "expo": {
     "name": "BookMate",
     "slug": "bookmate-mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "splash": {
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.siamoon.bookmate",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to your camera to scan receipts.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload receipts."
@@ -26,7 +26,7 @@
         "backgroundColor": "#121212"
       },
       "package": "com.siamoon.bookmate",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
