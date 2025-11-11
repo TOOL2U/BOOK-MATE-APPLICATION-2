@@ -440,7 +440,7 @@ export default function ManualEntryScreen() {
                   placeholderTextColor={COLORS.TEXT_SECONDARY}
                 />
               </>
-            ) : formData.typeOfOperation.startsWith('EXP') || formData.typeOfOperation.startsWith('OVERHEAD') ? (
+            ) : formData.typeOfOperation.toUpperCase().startsWith('EXP') || formData.typeOfOperation.toUpperCase().startsWith('OVERHEAD') ? (
               <>
                 <Text style={[styles.label, styles.debitLabel]}>
                   Debit (Expense) *

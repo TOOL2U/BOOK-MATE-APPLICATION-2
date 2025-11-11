@@ -1,8 +1,29 @@
 // Firebase Service for BookMate iOS
 // Handles Analytics and Crashlytics in production
+// NOTE: Firebase packages not installed yet - uncomment imports when ready to enable
+// To enable: npm install @react-native-firebase/app @react-native-firebase/analytics @react-native-firebase/crashlytics
 
-import analytics from '@react-native-firebase/analytics';
-import crashlytics from '@react-native-firebase/crashlytics';
+// import analytics from '@react-native-firebase/analytics';
+// import crashlytics from '@react-native-firebase/crashlytics';
+
+// Stub implementations for when Firebase is not installed
+const analytics = () => ({
+  setAnalyticsCollectionEnabled: async (_enabled: boolean) => {},
+  logEvent: async (_eventName: string, _params?: any) => {},
+  logScreenView: async (_params: any) => {},
+  setUserId: async (_userId: string) => {},
+  setUserProperty: async (_name: string, _value: string) => {},
+});
+
+const crashlytics = () => ({
+  setCrashlyticsCollectionEnabled: async (_enabled: boolean) => {},
+  setUserId: async (_userId: string) => {},
+  log: (_message: string) => {},
+  recordError: (_error: Error) => {},
+  setAttribute: (_key: string, _value: string) => {},
+  setAttributes: (_attributes: Record<string, string>) => {},
+  crash: () => {},
+});
 
 class FirebaseService {
   private isInitialized: boolean = false;

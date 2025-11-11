@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiService } from '../services/api';
-import type { DropdownOptions } from '../types';
 
 interface OptionsContextType {
   properties: string[];
