@@ -82,7 +82,7 @@ export default function SettingsScreen({ onLogout }: SettingsScreenProps) {
   };
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@siamoon.com').catch(err =>
+    Linking.openURL('mailto:shaun@siamoon.com').catch(err =>
       Alert.alert('Error', 'Could not open email client')
     );
   };
@@ -178,7 +178,7 @@ export default function SettingsScreen({ onLogout }: SettingsScreenProps) {
           value="accounting.siamoon.com"
         />
         <View style={styles.divider} />
-        <TouchableOpacity onPress={() => handleOpenLink('https://siamoon.com/terms')}>
+        <TouchableOpacity onPress={() => handleOpenLink('https://accounting.siamoon.com/terms')}>
           <SettingsRow
             icon="document-text-outline"
             label="Terms of Service"
@@ -186,7 +186,7 @@ export default function SettingsScreen({ onLogout }: SettingsScreenProps) {
           />
         </TouchableOpacity>
         <View style={styles.divider} />
-        <TouchableOpacity onPress={() => handleOpenLink('https://siamoon.com/privacy')}>
+        <TouchableOpacity onPress={() => handleOpenLink('https://accounting.siamoon.com/privacy')}>
           <SettingsRow
             icon="shield-checkmark-outline"
             label="Privacy Policy"
