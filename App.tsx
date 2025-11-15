@@ -285,6 +285,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [userKey, setUserKey] = useState(0); // Key to force remount on user change
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -321,14 +322,18 @@ export default function App() {
     setShowSplash(false);
   };
 
-  // Handle successful login
+  // Handle successful login - increment key to force fresh data load
   const handleLoginSuccess = () => {
+    console.log('🔑 User logged in - forcing fresh data load');
     setAuthenticated(true);
+    setUserKey(prev => prev + 1); // Force remount with fresh data
   };
 
   // Handle logout (can be called from any screen)
   const handleLogout = () => {
+    console.log('🚪 User logged out - clearing cached data');
     setAuthenticated(false);
+    setUserKey(prev => prev + 1); // Force remount to clear old data
   };
 
   // Show loading indicator while fonts are loading (before splash)
@@ -356,7 +361,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <OptionsProvider>
+      <OptionsProvider key={userKey}>
         <NavigationContainer>
           <StatusBar style="light" />
           <MainNavigator onLogout={handleLogout} />

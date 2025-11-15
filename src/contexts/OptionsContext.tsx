@@ -26,6 +26,8 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       
+      console.log('🔄 OptionsContext: Fetching fresh dropdown options...');
+      
       const response = await apiService.getDropdownOptions();
       
       if (response.ok && response.data) {
@@ -33,6 +35,9 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
         setTypeOfOperations(response.data.typeOfOperations || []);
         setTypeOfPayments(response.data.typeOfPayments || []);
         setMonths(response.data.months || []);
+        
+        console.log('✅ OptionsContext: Options loaded for account');
+        console.log('   Properties:', response.data.properties);
       } else {
         throw new Error(response.error || 'Failed to fetch dropdown options');
       }
