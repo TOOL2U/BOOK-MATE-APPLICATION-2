@@ -202,8 +202,16 @@ export default function InboxScreen() {
       tx => tx.month === currentMonth && tx.year === currentYear
     );
     
-    const totalIncome = thisMonthTransactions.reduce((sum, tx) => sum + tx.credit, 0);
-    const totalExpenses = thisMonthTransactions.reduce((sum, tx) => sum + tx.debit, 0);
+    // Calculate income from pure income transactions only (credit > 0 and debit === 0)
+    const totalIncome = thisMonthTransactions.reduce((sum, tx) => {
+      return tx.credit > 0 && tx.debit === 0 ? sum + tx.credit : sum;
+    }, 0);
+    
+    // Calculate expenses from pure expense transactions only (debit > 0 and credit === 0)
+    const totalExpenses = thisMonthTransactions.reduce((sum, tx) => {
+      return tx.debit > 0 && tx.credit === 0 ? sum + tx.debit : sum;
+    }, 0);
+    
     const net = totalIncome - totalExpenses;
     
     return {
@@ -233,9 +241,21 @@ export default function InboxScreen() {
     // Apply type filter
     if (filterType !== 'all') {
       filtered = filtered.filter(tx => {
-        if (filterType === 'income') return tx.credit > 0;
-        if (filterType === 'expense') return tx.debit > 0;
-        if (filterType === 'transfer') return tx.typeOfOperation?.toLowerCase().includes('transfer');
+        const isTransfer = tx.typeOfOperation?.toLowerCase().includes('transfer');
+        const hasBothValues = tx.debit > 0 && tx.credit > 0;
+        
+        if (filterType === 'income') {
+          // Only show pure income: credit > 0, debit must be 0, and NOT a transfer
+          return tx.credit > 0 && tx.debit === 0 && !isTransfer && !hasBothValues;
+        }
+        if (filterType === 'expense') {
+          // Only show pure expenses: debit > 0, credit must be 0, and NOT a transfer
+          return tx.debit > 0 && tx.credit === 0 && !isTransfer && !hasBothValues;
+        }
+        if (filterType === 'transfer') {
+          // Transfers can be identified by typeOfOperation or having both debit and credit
+          return isTransfer || hasBothValues;
+        }
         return true;
       });
     }
@@ -403,7 +423,7 @@ export default function InboxScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Premium gradient background */}
       <LinearGradient
         colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
@@ -617,7 +637,7 @@ export default function InboxScreen() {
         confirmText={alertConfig?.confirmText}
         cancelText={alertConfig?.cancelText}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -635,9 +655,10 @@ const styles = StyleSheet.create({
   contentWrapper: {
     flex: 1,
     paddingHorizontal: SPACING.LG,
+    paddingTop: SPACING.LG,
   },
   headerSection: {
-    marginTop: 8,
+    marginTop: 0,
     marginBottom: 16,
   },
   title: {

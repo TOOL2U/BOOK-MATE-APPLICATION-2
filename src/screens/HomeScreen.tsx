@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   // Header
   headerWrapper: {
     position: 'relative',
-    marginTop: 8,
+    marginTop: 0,
   },
   headerGradient: {
     position: 'absolute',

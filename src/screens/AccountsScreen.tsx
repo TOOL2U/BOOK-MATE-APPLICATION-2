@@ -17,7 +17,6 @@ import {
   Animated,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +24,7 @@ import { apiService } from '../services/api';
 import { COLORS, SHADOWS, SPACING } from '../config/theme';
 import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import AccountDetailModal from '../components/AccountDetailModal';
+import PinModal from '../components/PinModal';
 import LogoBM from '../components/LogoBM';
 
 interface AccountSummary {
@@ -47,6 +47,8 @@ export default function AccountsScreen({ onOpenWizardModal, onOpenTransferModal 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<AccountSummary | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pendingAccount, setPendingAccount] = useState<AccountSummary | null>(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -79,8 +81,25 @@ export default function AccountsScreen({ onOpenWizardModal, onOpenTransferModal 
   };
 
   const handleAccountPress = (account: AccountSummary) => {
-    setSelectedAccount(account);
-    setModalVisible(true);
+    // Store the account and show PIN modal first
+    setPendingAccount(account);
+    setPinModalVisible(true);
+  };
+
+  const handlePinSuccess = () => {
+    // PIN correct - show account detail modal
+    setPinModalVisible(false);
+    if (pendingAccount) {
+      setSelectedAccount(pendingAccount);
+      setModalVisible(true);
+      setPendingAccount(null);
+    }
+  };
+
+  const handlePinCancel = () => {
+    // PIN cancelled - clear pending account
+    setPinModalVisible(false);
+    setPendingAccount(null);
   };
 
   const handleCloseModal = () => {
@@ -132,7 +151,7 @@ export default function AccountsScreen({ onOpenWizardModal, onOpenTransferModal 
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Premium gradient background */}
       <LinearGradient
         colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
@@ -191,6 +210,13 @@ export default function AccountsScreen({ onOpenWizardModal, onOpenTransferModal 
           showsVerticalScrollIndicator={false}
         />
 
+        {/* PIN Entry Modal */}
+        <PinModal
+          visible={pinModalVisible}
+          onSuccess={handlePinSuccess}
+          onCancel={handlePinCancel}
+        />
+
         {/* Account Detail Modal */}
         <AccountDetailModal
           visible={modalVisible}
@@ -200,7 +226,7 @@ export default function AccountsScreen({ onOpenWizardModal, onOpenTransferModal 
           onTransfer={onOpenTransferModal}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -301,9 +327,10 @@ const styles = StyleSheet.create({
   contentWrapper: {
     flex: 1,
     paddingHorizontal: SPACING.LG,
+    paddingTop: SPACING.LG,
   },
   headerSection: {
-    marginTop: 8,
+    marginTop: 0,
     marginBottom: 16,
   },
   title: {

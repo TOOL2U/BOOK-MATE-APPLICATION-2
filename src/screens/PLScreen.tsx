@@ -13,7 +13,6 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../services/api';
@@ -185,7 +184,7 @@ export default function PLScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Premium gradient background */}
       <LinearGradient
         colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
@@ -378,7 +377,7 @@ export default function PLScreen() {
         confirmText={alertConfig?.confirmText}
         cancelText={alertConfig?.cancelText}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -403,7 +402,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   header: {
@@ -411,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 16,
-    marginTop: 8,
+    marginTop: 0,
   },
   title: {
     fontSize: 28,
