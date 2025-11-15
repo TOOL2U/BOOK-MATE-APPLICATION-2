@@ -130,12 +130,11 @@ export async function logout(): Promise<void> {
   } catch (error) {
     console.error('Logout error:', error);
   } finally {
-    // Always clear local storage
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.TOKEN,
-      STORAGE_KEYS.USER,
-      STORAGE_KEYS.ACCOUNT,
-    ]);
+    // Clear all storage including dropdown options cache
+    const allKeys = await AsyncStorage.getAllKeys();
+    const bookMateKeys = allKeys.filter(key => key.startsWith('@bookmate:'));
+    await AsyncStorage.multiRemove(bookMateKeys);
+    console.log('🧹 Cleared all cached data on logout');
   }
 }
 
