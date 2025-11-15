@@ -39,7 +39,7 @@ export function Card({ children, style, elevated = false, padding = 'md', glowEf
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     borderRadius: RADIUS.LG,
     borderWidth: 1,
     borderColor: COLORS.BORDER,

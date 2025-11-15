@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "owner": "siamoon",
+    "owner": "shauntool2u",
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
@@ -24,7 +24,8 @@
       "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to your camera to scan receipts.",
-        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload receipts."
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload receipts.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -35,9 +36,10 @@
       "package": "com.siamoon.bookmate",
       "versionCode": 2,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {},
@@ -69,6 +71,11 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b63d906d-9d30-4285-9a69-5c41d5c860a2"
+      }
+    }
   }
 }

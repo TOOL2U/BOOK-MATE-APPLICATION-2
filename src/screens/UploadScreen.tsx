@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
 import LogoBM from '../components/LogoBM';
@@ -185,7 +186,7 @@ export default function UploadScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   content: {
     padding: 20,
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     alignItems: 'center',
     ...SHADOWS.YELLOW_GLOW,
   },
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   buttonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
@@ -249,8 +250,8 @@ const styles = StyleSheet.create({
   resultContainer: {
     marginTop: 24,
     padding: 16,
-    backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 0,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },

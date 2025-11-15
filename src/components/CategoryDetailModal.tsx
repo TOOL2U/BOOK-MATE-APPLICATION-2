@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { COLORS } from '../config/theme';
+import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import { apiService } from '../services/api';
 
 interface Transaction {
@@ -212,7 +213,7 @@ export default function CategoryDetailModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
@@ -273,12 +274,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     backgroundColor: COLORS.YELLOW,
-    borderRadius: 8,
+    borderRadius: COMPONENT_RADIUS.button,
   },
   retryButtonText: {
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
   },
   emptyContainer: {
     flex: 1,
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
   },
   totalLabel: {
     fontSize: 18,

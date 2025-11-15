@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 
 interface SearchableDropdownProps {
   label: string;
@@ -211,11 +212,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 0,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    borderRadius: COMPONENT_RADIUS.dropdown,
     position: 'relative',
     borderWidth: 1,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
   },
   input: {
     flex: 1,
@@ -236,11 +237,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 0,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    borderRadius: BORDER_RADIUS.sm,
     maxHeight: 200, // Reduced from 350 to 200
     borderWidth: 1,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
     zIndex: 1000,
     ...SHADOWS.MEDIUM,
   },

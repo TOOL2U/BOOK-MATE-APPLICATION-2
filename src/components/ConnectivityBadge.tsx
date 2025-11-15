@@ -21,6 +21,9 @@ export function ConnectivityBadge({ style }: ConnectivityBadgeProps) {
       setIsHealthy(result.ok);
       setLastCheck(new Date());
     } catch (error) {
+      // Silently handle API errors - don't show error messages
+      // Just update badge to show offline status
+      console.debug('Health check failed (offline mode):', error);
       setIsHealthy(false);
       setLastCheck(new Date());
     } finally {

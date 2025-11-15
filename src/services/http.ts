@@ -1,4 +1,5 @@
 import { BASE_URL, REQUEST_TIMEOUT_MS, RETRIES } from "../config/env";
+import { getToken } from "./authService";
 
 function withTimeout<T>(p: Promise<T>, ms = REQUEST_TIMEOUT_MS): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -10,10 +11,18 @@ function withTimeout<T>(p: Promise<T>, ms = REQUEST_TIMEOUT_MS): Promise<T> {
 
 async function coreFetch(path: string, init?: RequestInit) {
   const url = path.startsWith("http") ? path : `${BASE_URL}${path}`;
+  
+  // Get JWT token for authentication
+  const token = await getToken();
+  
+  // DEBUG: Log token status
+  console.log(`🔐 API Request to ${path}:`, token ? `Token: ${token.substring(0, 20)}...` : '❌ NO TOKEN');
+  
   const res = await withTimeout(fetch(url, {
     ...init,
     headers: {
       "Accept": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
   }));

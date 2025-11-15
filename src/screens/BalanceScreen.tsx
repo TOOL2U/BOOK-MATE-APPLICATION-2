@@ -11,6 +11,7 @@ import {
 import { apiService } from '../services/api';
 import { BalanceVerificationService, VerificationSummary } from '../services/balanceVerification';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import type { Balance } from '../types';
 import TransferModal from '../components/TransferModal';
 import BrandedAlert from '../components/BrandedAlert';
@@ -298,11 +299,11 @@ export default function BalanceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -336,12 +337,12 @@ const styles = StyleSheet.create({
   totalCard: {
     backgroundColor: COLORS.YELLOW,
     padding: 24,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.cardLarge,
     marginBottom: 24,
     ...SHADOWS.YELLOW_GLOW,
   },
   totalLabel: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 14,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   totalAmount: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 36,
     fontFamily: 'BebasNeue-Regular',
     fontWeight: '400',
@@ -360,9 +361,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   balanceCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
@@ -393,10 +394,10 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: 'transparent',
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
     borderStyle: 'dashed',
   },
   addButtonText: {
@@ -408,14 +409,14 @@ const styles = StyleSheet.create({
   transferButton: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 24,
     ...SHADOWS.YELLOW_GLOW,
   },
   transferButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
@@ -441,20 +442,20 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.YELLOW,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 0,
+    borderRadius: BORDER_RADIUS.sm,
     minWidth: 100,
     alignItems: 'center',
   },
   recalculateButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 14,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
   },
   summaryCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     marginBottom: 16,
@@ -484,9 +485,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   verificationCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     marginBottom: 12,

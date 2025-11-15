@@ -16,6 +16,7 @@ import { useIsFocused, useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import type { Transaction } from '../types';
 import CustomPicker from '../components/CustomPicker';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -236,6 +237,9 @@ export default function ManualEntryScreen() {
 
   // Wizard-specific submit handler that throws errors for the wizard to catch
   const handleWizardSubmit = async (data: Transaction) => {
+    console.log('🎯🎯🎯 ENTERED handleWizardSubmit - START OF FUNCTION');
+    console.log('🎯 ManualEntryScreen: handleWizardSubmit called with data:', JSON.stringify(data, null, 2));
+    
     // Ensure debit and credit are numbers before submitting
     const submissionData = {
       ...data,
@@ -243,13 +247,19 @@ export default function ManualEntryScreen() {
       credit: typeof data.credit === 'string' ? parseFloat(data.credit) || 0 : data.credit,
     };
     
+    console.log('📤 Calling apiService.submitTransaction with:', JSON.stringify(submissionData, null, 2));
+    
     const response = await apiService.submitTransaction(submissionData);
+    
+    console.log('📬 Received response from apiService:', JSON.stringify(response, null, 2));
     
     if (!response.ok) {
       // Throw error with the response message so wizard can catch it
+      console.error('❌ Response not OK, throwing error');
       throw new Error(response.message || 'Failed to submit transaction');
     }
     
+    console.log('✅ Response OK, returning to wizard');
     // If successful, return (wizard will show success message)
     return response;
   };
@@ -399,7 +409,7 @@ export default function ManualEntryScreen() {
             Description <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
-            style={[styles.input, { borderColor: COLORS.YELLOW }]}
+            style={[styles.input, { borderColor: COLORS.BRAND_YELLOW }]}
             value={formData.detail}
             onChangeText={(text) => setFormData({ ...formData, detail: text })}
             onFocus={scrollToBottom}
@@ -534,11 +544,11 @@ export default function ManualEntryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -603,10 +613,10 @@ const styles = StyleSheet.create({
     color: COLORS.ERROR,
   },
   input: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     color: COLORS.TEXT_PRIMARY,
     padding: 12,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.input,
     fontSize: 16,
     fontFamily: 'Aileron-Regular',
     borderWidth: 1,
@@ -615,7 +625,7 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     alignItems: 'center',
     ...SHADOWS.YELLOW_GLOW,
   },
@@ -623,7 +633,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   submitButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
@@ -635,12 +645,12 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: COLORS.YELLOW,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     marginBottom: 24,
     ...SHADOWS.YELLOW_GLOW,
   },
   wizardButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
     fontWeight: '600',
@@ -648,10 +658,10 @@ const styles = StyleSheet.create({
   helperTextContainer: {
     backgroundColor: COLORS.SURFACE_2,
     padding: 12,
-    borderRadius: 0,
+    borderRadius: BORDER_RADIUS.sm,
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.YELLOW,
+    borderLeftColor: COLORS.BRAND_YELLOW,
   },
   helperText: {
     color: COLORS.TEXT_SECONDARY,

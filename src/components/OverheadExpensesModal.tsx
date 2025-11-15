@@ -99,7 +99,7 @@ export default function OverheadExpensesModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
   },
   totalLabel: {
     fontSize: 18,

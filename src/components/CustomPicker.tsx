@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../config/theme';
+import { COMPONENT_RADIUS } from '../constants/borderRadius';
 
 interface CustomPickerProps {
   label: string;
@@ -70,11 +71,11 @@ const styles = StyleSheet.create({
     color: COLORS.ERROR,
   },
   pickerContainer: {
-    backgroundColor: COLORS.SURFACE_1,
-    borderRadius: 0,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    borderRadius: COMPONENT_RADIUS.dropdown,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
   },
   picker: {
     color: COLORS.TEXT_PRIMARY,

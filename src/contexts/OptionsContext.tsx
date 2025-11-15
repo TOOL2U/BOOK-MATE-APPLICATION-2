@@ -5,6 +5,7 @@ interface OptionsContextType {
   properties: string[];
   typeOfOperations: string[];
   typeOfPayments: string[];
+  months: string[];
   loading: boolean;
   error: string | null;
   refreshOptions: () => Promise<void>;
@@ -16,6 +17,7 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
   const [properties, setProperties] = useState<string[]>([]);
   const [typeOfOperations, setTypeOfOperations] = useState<string[]>([]);
   const [typeOfPayments, setTypeOfPayments] = useState<string[]>([]);
+  const [months, setMonths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +32,7 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
         setProperties(response.data.properties || []);
         setTypeOfOperations(response.data.typeOfOperations || []);
         setTypeOfPayments(response.data.typeOfPayments || []);
+        setMonths(response.data.months || []);
       } else {
         throw new Error(response.error || 'Failed to fetch dropdown options');
       }
@@ -39,6 +42,7 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
       setProperties([]);
       setTypeOfOperations([]);
       setTypeOfPayments([]);
+      setMonths([]);
     } finally {
       setLoading(false);
     }
@@ -52,6 +56,7 @@ export function OptionsProvider({ children }: { children: ReactNode }) {
     properties,
     typeOfOperations,
     typeOfPayments,
+    months,
     loading,
     error,
     refreshOptions: fetchOptions,

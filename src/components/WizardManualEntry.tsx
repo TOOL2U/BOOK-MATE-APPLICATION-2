@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import type { Transaction } from '../types';
 import CustomPicker from './CustomPicker';
 import SearchableDropdown from './SearchableDropdown';
@@ -49,8 +50,6 @@ export default function WizardManualEntry({
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [slideAnim] = useState(new Animated.Value(0));
-  const [fadeAnim] = useState(new Animated.Value(0)); // Fade animation for modal
-  const [scaleAnim] = useState(new Animated.Value(0.9)); // Scale animation for modal
   const descriptionInputRef = React.useRef<TextInput>(null); // Ref for auto-focus
   
   const {
@@ -69,9 +68,9 @@ export default function WizardManualEntry({
     day: new Date().getDate().toString(),
     month: currentMonth,
     year: new Date().getFullYear().toString(),
-    property: 'Family',
+    property: '',
     typeOfOperation: '',
-    typeOfPayment: 'Bank Transfer - Krung Thai',
+    typeOfPayment: '',
     detail: '',
     ref: '',
     debit: 0,
@@ -80,51 +79,30 @@ export default function WizardManualEntry({
 
   const totalSteps = 3; // Changed from 4 to 3 (removed ref step)
 
-  // Set default payment type only once when modal opens and typeOfPayments are loaded
-  const hasSetDefault = React.useRef(false);
+  // Set default values from API data when modal opens
+  const hasSetDefaults = React.useRef(false);
   React.useEffect(() => {
-    if (visible && typeOfPayments.length > 0 && !hasSetDefault.current) {
-      const defaultPayment = typeOfPayments.find(payment => 
-        payment.includes('Bank Transfer - Krung Thai')
-      ) || typeOfPayments[0];
-      setFormData(prev => ({ ...prev, typeOfPayment: defaultPayment }));
-      hasSetDefault.current = true;
+    if (visible && !hasSetDefaults.current) {
+      // Set first property as default
+      if (properties.length > 0) {
+        setFormData(prev => ({ ...prev, property: properties[0] }));
+      }
+      
+      // Set first payment type as default
+      if (typeOfPayments.length > 0) {
+        setFormData(prev => ({ ...prev, typeOfPayment: typeOfPayments[0] }));
+      }
+      
+      hasSetDefaults.current = true;
     }
     
     // Reset the flag when modal closes
     if (!visible) {
-      hasSetDefault.current = false;
+      hasSetDefaults.current = false;
     }
-  }, [visible, typeOfPayments]);
+  }, [visible, properties, typeOfPayments]);
 
   // Fade in animation when modal becomes visible
-  React.useEffect(() => {
-    if (visible) {
-      // Reset animations
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.9);
-      
-      // Animate in
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      // Reset when closing
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.9);
-    }
-  }, [visible]);
-
   const animateTransition = (direction: 'forward' | 'backward') => {
     Animated.timing(slideAnim, {
       toValue: direction === 'forward' ? -20 : 20,
@@ -157,11 +135,24 @@ export default function WizardManualEntry({
   };
 
   const handleSubmit = async () => {
+    console.log('🔵 WizardManualEntry: handleSubmit called');
+    console.log('📋 Form data:', JSON.stringify(formData, null, 2));
+    console.log('🔍 onSubmit prop type:', typeof onSubmit);
+    console.log('🔍 onSubmit prop value:', onSubmit);
+    
     setLoading(true);
     try {
-      // Call the parent's submit handler
-      await onSubmit(formData);
+      console.log('⏳ Calling parent onSubmit handler...');
       
+      if (typeof onSubmit !== 'function') {
+        console.error('❌ onSubmit is not a function!', typeof onSubmit);
+        throw new Error('onSubmit is not a function');
+      }
+      
+      // Call the parent's submit handler
+      const result = await onSubmit(formData);
+      
+      console.log('✅ Parent onSubmit completed successfully, result:', result);
       // If we get here without error, the transaction was successful
       showAlert({
         title: 'Success!',
@@ -169,15 +160,22 @@ export default function WizardManualEntry({
         type: 'success',
         onConfirm: () => {
           hideAlert();
-          // Navigate first, then close modal with a slight delay
-          onSuccess?.();
-          setTimeout(() => {
-            handleClose();
-          }, 100);
+          
+          // Call success callback if provided
+          if (onSuccess && typeof onSuccess === 'function') {
+            try {
+              onSuccess();
+            } catch (err) {
+              console.error('Error in onSuccess callback:', err);
+            }
+          }
+          
+          // Close modal (handleClose will reset form state)
+          handleClose();
         },
       });
     } catch (error) {
-      console.error('Submit error:', error);
+      console.error('❌ WizardManualEntry: Submit error:', error);
       
       // Extract meaningful error message
       let errorMessage = 'Failed to add transaction. Please try again.';
@@ -217,9 +215,9 @@ export default function WizardManualEntry({
       day: new Date().getDate().toString(),
       month: currentMonth,
       year: new Date().getFullYear().toString(),
-      property: 'Family',
+      property: properties.length > 0 ? properties[0] : '',
       typeOfOperation: '',
-      typeOfPayment: 'Bank Transfer - Krung Thai',
+      typeOfPayment: typeOfPayments.length > 0 ? typeOfPayments[0] : '',
       detail: '',
       ref: '',
       debit: 0,
@@ -345,7 +343,7 @@ export default function WizardManualEntry({
   );
 
   const renderStep3 = () => (
-    <Animated.View style={[styles.stepContainer, { transform: [{ translateX: slideAnim }] }]}>
+    <Animated.View style={[styles.stepContainer, styles.step3Container, { transform: [{ translateX: slideAnim }] }]}>
       <Text style={styles.stepTitle}>Description & Amount</Text>
 
       <View style={styles.field}>
@@ -446,46 +444,42 @@ export default function WizardManualEntry({
   return (
     <Modal
       visible={visible}
-      animationType="none"
-      transparent={true}
+      animationType="slide"
+      presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.overlay}
-          >
-            <Animated.View style={[
-              styles.modalContainer,
-              {
-                opacity: fadeAnim,
-                transform: [{ scale: scaleAnim }],
-              }
-            ]}>
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>New Transaction</Text>
-                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-                  <Ionicons name="close" size={28} color={COLORS.TEXT_PRIMARY} />
-                </TouchableOpacity>
-              </View>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>New Transaction</Text>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color={COLORS.TEXT_PRIMARY} />
+          </TouchableOpacity>
+        </View>
 
+        {/* Show loading if required data not available */}
+        {(!properties || properties.length === 0 || !typeOfPayments || typeOfPayments.length === 0) && visible ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.YELLOW} />
+            <Text style={styles.loadingText}>Loading account data...</Text>
+          </View>
+        ) : (
+          <>
             {/* Progress Bar */}
             {renderProgressBar()}
 
-            {/* Step Content - Scrollable */}
-            <ScrollView
-              style={styles.content}
-              contentContainerStyle={styles.contentContainer}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {renderCurrentStep()}
-            </ScrollView>
+        {/* Step Content - Scrollable */}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderCurrentStep()}
+        </ScrollView>
 
-            {/* Navigation Buttons */}
-            <View style={styles.footer}>
+        {/* Navigation Buttons */}
+        <View style={styles.buttonContainer}>
             {currentStep > 1 && (
               <TouchableOpacity
                 style={styles.backButton}
@@ -524,10 +518,9 @@ export default function WizardManualEntry({
               </TouchableOpacity>
             )}
           </View>
-        </Animated.View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
-      </Animated.View>
+          </>
+        )}
+      </View>
       
       {/* Branded Alert */}
       <BrandedAlert
@@ -545,42 +538,34 @@ export default function WizardManualEntry({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'flex-start',
-  },
-  modalContainer: {
-    width: '100%',
-    height: SCREEN_HEIGHT * 0.65, // Use 65% of screen height - more compact
-    backgroundColor: COLORS.SURFACE_1,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    borderWidth: 2,
-    borderColor: COLORS.YELLOW,
-    marginTop: Platform.OS === 'ios' ? 140 : 100, // Position from top
-    overflow: 'visible', // Allow dropdowns to appear outside
-    ...SHADOWS.YELLOW_GLOW,
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
-    minHeight: 60,
   },
   headerTitle: {
-    fontSize: 22,
-    fontFamily: 'MadeMirage-Regular',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: COLORS.TEXT_PRIMARY,
+    fontFamily: 'BebasNeue-Regular',
+    letterSpacing: 1,
   },
   closeButton: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   progressContainer: {
     flexDirection: 'row',
@@ -594,7 +579,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     backgroundColor: COLORS.BORDER,
-    borderRadius: 0,
+    borderRadius: BORDER_RADIUS.xs,
   },
   progressDotActive: {
     backgroundColor: COLORS.YELLOW,
@@ -607,13 +592,19 @@ const styles = StyleSheet.create({
     overflow: 'visible', // Allow dropdowns to appear outside
   },
   contentContainer: {
+    flexGrow: 1,
+    justifyContent: 'center', // Center content vertically
     padding: 20,
-    paddingBottom: 40, // Extra padding at bottom
+    paddingTop: 60,  // Push content down from top
+    paddingBottom: 80, // Extra padding at bottom to center better
     overflow: 'visible', // Allow dropdowns to appear outside
   },
   stepContainer: {
     width: '100%',
     overflow: 'visible', // Allow dropdowns to appear outside
+  },
+  step3Container: {
+    marginTop: -120, // Move step 3 content upwards
   },
   dropdownWrapper: {
     zIndex: 9999,
@@ -655,7 +646,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SURFACE_2,
     color: COLORS.TEXT_PRIMARY,
     padding: 14,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.input,
     fontSize: 16,
     fontFamily: 'Aileron-Regular',
     borderWidth: 1,
@@ -667,14 +658,15 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: 14,
   },
-  footer: {
+  buttonContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     minHeight: 70,
     paddingBottom: Platform.OS === 'ios' ? 24 : 16, // Account for home indicator
   },
@@ -698,12 +690,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.YELLOW,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     minHeight: 48,
     ...SHADOWS.YELLOW_GLOW,
   },
   nextButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
   },
@@ -714,25 +706,37 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.YELLOW,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.button,
     minHeight: 48,
     ...SHADOWS.YELLOW_GLOW,
   },
   submitButtonText: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
   },
   buttonDisabled: {
     opacity: 0.5,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+    fontFamily: 'Aileron-Regular',
+  },
   helperTextContainer: {
     backgroundColor: COLORS.SURFACE_2,
     padding: 12,
-    borderRadius: 0,
+    borderRadius: BORDER_RADIUS.sm,
     marginBottom: 16,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.YELLOW,
+    borderLeftColor: COLORS.BRAND_YELLOW,
   },
   helperText: {
     color: COLORS.TEXT_SECONDARY,

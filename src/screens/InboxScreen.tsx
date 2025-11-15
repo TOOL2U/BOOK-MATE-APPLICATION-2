@@ -9,10 +9,12 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import type { TransactionWithRow } from '../types';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
@@ -125,7 +127,7 @@ export default function InboxScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.YELLOW} />
+        <ActivityIndicator size="large" color={COLORS.BRAND_YELLOW} />
       </View>
     );
   }
@@ -138,7 +140,7 @@ export default function InboxScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.YELLOW}
+            tintColor={COLORS.BRAND_YELLOW}
           />
         }
       >
@@ -167,9 +169,9 @@ export default function InboxScreen() {
               const backgroundColor = isHighlighted
                 ? highlightAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [COLORS.SURFACE_1, COLORS.YELLOW + '40'], // Yellow with 40% opacity
+                    outputRange: [COLORS.CARD_PRIMARY, COLORS.BRAND_YELLOW + '40'], // Yellow with 40% opacity
                   })
-                : COLORS.SURFACE_1;
+                : COLORS.CARD_PRIMARY;
 
               return (
                 <Animated.View
@@ -188,7 +190,7 @@ export default function InboxScreen() {
                       onPress={() => handleDelete(transaction.rowNumber)}
                       style={styles.deleteButton}
                     >
-                      <Text style={styles.deleteButtonText}>🗑️</Text>
+                      <Ionicons name="trash-outline" size={20} color={COLORS.ERROR} />
                     </TouchableOpacity>
                   </View>
 
@@ -246,11 +248,11 @@ export default function InboxScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -302,14 +304,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   transactionCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
   transactionCardHighlighted: {
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
     borderWidth: 2,
     ...SHADOWS.YELLOW_GLOW,
   },
@@ -327,10 +329,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 4,
-  },
-  deleteButtonText: {
-    fontSize: 18,
-    color: COLORS.ERROR,
   },
   transactionDetail: {
     color: COLORS.TEXT_PRIMARY,

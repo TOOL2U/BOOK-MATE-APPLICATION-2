@@ -5,6 +5,18 @@ import {
 } from "../types/api";
 import { getMonthNumber } from "../utils/dateUtils";
 import Logger from "./logger";
+import { getToken } from "./authService";
+
+/**
+ * Helper to create authenticated fetch headers
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const token = await getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+  };
+}
 
 const validMonth = (m?: string | null): MonthKey => {
   if (!m || typeof m !== 'string') return "ALL";
@@ -67,10 +79,10 @@ export const apiService = {
   
   async ocr(image: string, fileType: string): Promise<{ok: boolean; text?: string; error?: string}> {
     try {
-      // Note: OCR endpoint not yet unified - using legacy for now
+      const headers = await getAuthHeaders();
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/extract/ocr`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ image, fileType }),
       });
       const data = await response.json();
@@ -82,10 +94,10 @@ export const apiService = {
 
   async extract(text: string, comment?: string): Promise<{ok: boolean; transaction?: any; error?: string}> {
     try {
-      // Note: Extract endpoint not yet unified - using legacy for now
+      const headers = await getAuthHeaders();
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/extract`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ text, comment }),
       });
       const data = await response.json();
@@ -97,25 +109,37 @@ export const apiService = {
 
   async submitTransaction(transaction: any): Promise<{ok: boolean; message?: string}> {
     try {
+      console.log('🚀 Submitting transaction to POST /api/sheets:', JSON.stringify(transaction, null, 2));
+      
       // Submit transaction with month as received (e.g., "NOV")
       const result = await this.postSheets(transaction);
+      
+      console.log('📥 Response from POST /api/sheets:', JSON.stringify(result, null, 2));
       
       // Handle the actual API response format
       const isSuccess = result.ok || (result as any).success;
       const responseMessage = result.error || (result as any).message || (isSuccess ? 'Success' : 'Submit failed');
+      
+      console.log(`✅ Transaction submission ${isSuccess ? 'SUCCESSFUL' : 'FAILED'}:`, responseMessage);
       
       return { 
         ok: isSuccess, 
         message: responseMessage
       };
     } catch (error) {
+      console.error('❌ Transaction submission ERROR:', error);
       return { ok: false, message: error instanceof Error ? error.message : 'Submit failed' };
     }
   },
 
   async getInbox(): Promise<{ok: boolean; data?: any[]; error?: string}> {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/inbox`);
+      const token = await getToken();
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/inbox`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -123,7 +147,10 @@ export const apiService = {
       
       const result = await response.json();
       
-      if (result.ok && result.data) {
+      // Check for both 'ok' and 'success' (webapp API uses 'success')
+      const isSuccess = result.ok || result.success;
+      
+      if (isSuccess && result.data) {
         // Sort transactions by rowNumber descending (newest first)
         const sortedData = result.data.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
         return { ok: true, data: sortedData };
@@ -137,10 +164,10 @@ export const apiService = {
 
   async deleteReceipt(rowNumber: number): Promise<{ok: boolean; message?: string}> {
     try {
-      // Note: Delete endpoint not yet unified - using legacy for now
+      const headers = await getAuthHeaders();
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/inbox`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ rowNumber }),
       });
       const data = await response.json();
@@ -161,11 +188,13 @@ export const apiService = {
 
   async getOverheadExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; totalExpense?: number; period?: string; error?: string}> {
     try {
-      // FIX (2025-11-09): Use correct endpoint as specified by webapp team
-      // See: MOBILE_TEAM_OVERHEAD_EXPENSES_FIX.md
-      // Changed from /api/options (wrong) to /api/pnl/overhead-expenses (correct)
+      const token = await getToken();
       const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com';
-      const response = await fetch(`${baseUrl}/api/pnl/overhead-expenses?period=${period}`);
+      const response = await fetch(`${baseUrl}/api/pnl/overhead-expenses?period=${period}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -189,11 +218,13 @@ export const apiService = {
 
   async getPropertyPersonExpenses(period: 'month' | 'year'): Promise<{ok: boolean; data?: any; totalExpense?: number; period?: string; error?: string}> {
     try {
-      // FIX (2025-11-09): Use correct endpoint as specified by webapp team
-      // See: MOBILE_TEAM_PROPERTY_PERSON_FIX.md
-      // Correct endpoint: /api/pnl/property-person
+      const token = await getToken();
       const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com';
-      const response = await fetch(`${baseUrl}/api/pnl/property-person?period=${period}`);
+      const response = await fetch(`${baseUrl}/api/pnl/property-person?period=${period}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -203,7 +234,10 @@ export const apiService = {
 
       const result = await response.json();
       
-      if (!result.ok || !result.data) {
+      // Check for both 'ok' and 'success' (webapp API uses 'success')
+      const isSuccess = result.ok || result.success;
+      
+      if (!isSuccess || !result.data) {
         Logger.warn('Property/Person API returned no data:', result);
         return { ok: false, error: result.error || 'No data available' };
       }
@@ -253,10 +287,10 @@ export const apiService = {
 
   async saveBalance(data: any): Promise<{ok: boolean; message?: string}> {
     try {
-      // Note: Save balance endpoint not yet unified - using legacy for now
+      const headers = await getAuthHeaders();
       const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL || 'https://accounting.siamoon.com'}/api/balance/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
       });
       const result = await response.json();
@@ -266,15 +300,17 @@ export const apiService = {
     }
   },
 
-  async getDropdownOptions(): Promise<{ok: boolean; data?: {properties: string[]; typeOfOperations: string[]; typeOfPayments: string[]}; error?: string}> {
+  async getDropdownOptions(): Promise<{ok: boolean; data?: {properties: string[]; typeOfOperations: string[]; typeOfPayments: string[]; months: string[]}; error?: string}> {
     try {
       const result = await this.getOptions();
+      
       return { 
         ok: true, 
         data: {
           properties: result.data.properties || [],
           typeOfOperations: result.data.typeOfOperation || [],
           typeOfPayments: result.data.typeOfPayment || [],
+          months: result.data.months || [],
         }
       };
     } catch (error) {

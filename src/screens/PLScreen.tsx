@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiService } from '../services/api';
+import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import type { PLData } from '../types';
 import LogoBM from '../components/LogoBM';
 
@@ -350,11 +351,11 @@ export default function PLScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -401,11 +402,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kpiCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
-    borderRadius: 0,
+    borderRadius: COMPONENT_RADIUS.card,
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.YELLOW,
+    borderLeftColor: COLORS.BRAND_YELLOW,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
     ...SHADOWS.SMALL,

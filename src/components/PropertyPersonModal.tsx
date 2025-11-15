@@ -113,7 +113,7 @@ export default function PropertyPersonModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
@@ -158,13 +158,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginRight: 12,
     borderRadius: 20,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
   monthButtonActive: {
     backgroundColor: COLORS.YELLOW,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
   },
   monthButtonText: {
     fontSize: 14,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_PRIMARY,
   },
   monthButtonTextActive: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontFamily: 'Aileron-Bold',
   },
   content: {
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
   },
   totalLabel: {
     fontSize: 18,

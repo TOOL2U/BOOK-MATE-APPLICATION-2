@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   outline: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
   },
   
   // Text base
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   
   // Text variants
   primaryText: {
-    color: COLORS.BLACK,  // Black text on yellow background
+    color: COLORS.BRAND_BLACK,  // Black text on yellow background
   },
   secondaryText: {
     color: COLORS.TEXT_PRIMARY,  // White text

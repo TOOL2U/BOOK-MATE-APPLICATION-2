@@ -519,7 +519,7 @@ const AccountAuditCard: React.FC<{ audit: BalanceAuditResult }> = ({ audit }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BG,
+    backgroundColor: COLORS.BACKGROUND,
   },
   content: {
     flex: 1,
@@ -559,13 +559,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
   },
   filterButtonActive: {
     backgroundColor: COLORS.YELLOW,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
   },
   filterButtonText: {
     fontSize: 12,
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_PRIMARY,
   },
   filterButtonTextActive: {
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontFamily: 'Aileron-Bold',
   },
   actionButtons: {
@@ -591,11 +591,11 @@ const styles = StyleSheet.create({
   auditButtonText: {
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
   },
   testButton: {
     flex: 1,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   summaryCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   healthCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   accountCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   recommendationsCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   totalsCard: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: COLORS.BG,
+    backgroundColor: COLORS.BACKGROUND,
     borderRadius: 12,
     padding: 24,
     width: '100%',
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Aileron-Regular',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: 16,
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
   },
   modalButtons: {
     flexDirection: 'row',
@@ -946,6 +946,6 @@ const styles = StyleSheet.create({
   modalCreateText: {
     fontSize: 16,
     fontFamily: 'Aileron-Bold',
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
   },
 });

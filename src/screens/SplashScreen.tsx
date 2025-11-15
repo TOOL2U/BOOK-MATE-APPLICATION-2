@@ -53,7 +53,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BLACK,
+    backgroundColor: COLORS.BRAND_BLACK,
     justifyContent: 'center',
     alignItems: 'center',
   },

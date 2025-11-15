@@ -1,18 +1,21 @@
 /**
- * API Client - Enhanced API client with rate limiting and error handling
+ * API Client - Enhanced API client with Authentication & Multi-Tenant Support
  * 
  * Features:
+ * - JWT Token Authentication (Authorization: Bearer <token>)
  * - Automatic rate limit handling (429 errors)
- * - Client-side caching
+ * - Session expiration handling (401 errors)
+ * - Client-side caching with account isolation
  * - Request headers (platform, version, device ID)
  * - Error handling with user-friendly messages
  * 
- * Based on webapp team recommendations (MOBILE_INTEGRATION_CONFIRMATION.md)
+ * Based on webapp team multi-tenant integration guide (Nov 14, 2025)
  */
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from '../config/api';
+import { getToken, clearSession } from './authService';
 
 /**
  * Custom error classes
@@ -83,21 +86,40 @@ class ApiClient {
       }
     }
 
-    // Prepare headers
-    const headers = {
+    // Get JWT token for authentication
+    const token = await getToken();
+
+    // Prepare headers with authentication
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Platform': Platform.OS,
       'X-Client-Version': '1.0.2',
       'X-Device-ID': this.deviceId || 'unknown',
       'X-Request-ID': this.generateRequestId(),
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
     try {
       const response = await fetch(`${this.BASE_URL}${endpoint}`, {
         ...options,
         headers,
       });
+
+      // Handle session expiration (401)
+      if (response.status === 401) {
+        // Clear session and throw specific error
+        await clearSession();
+        throw new ApiError(
+          'Session expired. Please login again.',
+          'SESSION_EXPIRED',
+          401
+        );
+      }
 
       // Handle rate limiting (429)
       if (response.status === 429) {

@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { COLORS, SHADOWS, SPACING, RADIUS } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 
 interface BrandedAlertProps {
   visible: boolean;
@@ -47,13 +48,13 @@ export default function BrandedAlert({
       case 'warning':
         return {
           iconColor: COLORS.YELLOW,
-          borderColor: COLORS.YELLOW,
+          borderColor: COLORS.BRAND_YELLOW,
           icon: '⚠',
         };
       default:
         return {
           iconColor: COLORS.YELLOW,
-          borderColor: COLORS.YELLOW,
+          borderColor: COLORS.BRAND_YELLOW,
           icon: 'ℹ',
         };
     }
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
     padding: SPACING.XL,
   },
   container: {
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
     borderRadius: RADIUS.LG,
     borderWidth: 2,
     width: Math.min(width - 40, 320),
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: BORDER_RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',

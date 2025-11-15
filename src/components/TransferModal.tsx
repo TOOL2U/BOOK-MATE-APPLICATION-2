@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { apiService } from '../services/api';
 import { COLORS, SHADOWS, RADIUS, SPACING } from '../config/theme';
+import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
 import CustomPicker from './CustomPicker';
 import BrandedAlert from './BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
@@ -28,11 +29,13 @@ export default function TransferModal({
   onTransferComplete 
 }: TransferModalProps) {
   const [accounts, setAccounts] = useState<string[]>([]);
+  const [properties, setProperties] = useState<string[]>([]);
   const [fromAccount, setFromAccount] = useState('');
   const [toAccount, setToAccount] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const isMountedRef = React.useRef(true);
 
   const {
     isVisible: alertVisible,
@@ -41,6 +44,14 @@ export default function TransferModal({
     showSuccess,
     hideAlert
   } = useBrandedAlert();
+
+  // Track mount status
+  React.useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Fetch accounts when modal opens
   useEffect(() => {
@@ -59,6 +70,10 @@ export default function TransferModal({
           setFromAccount(paymentAccounts[0]);
           setToAccount(paymentAccounts[1] || paymentAccounts[0]);
         }
+      }
+      // Fetch properties for the current account
+      if (response.data?.properties) {
+        setProperties(response.data.properties);
       }
     } catch (error) {
       showError('Error', 'Failed to fetch account options');
@@ -83,24 +98,37 @@ export default function TransferModal({
       return;
     }
 
+    // Ensure we have property data from API
+    if (!properties || properties.length === 0) {
+      showError('Data Error', 'Unable to fetch account properties. Please try again.');
+      return;
+    }
+
     setLoading(true);
     try {
       const today = new Date();
       const refId = `T-${today.getFullYear()}-${String(Date.now()).slice(-6)}`; // e.g., T-2025-123456
 
+      // Get uppercase month abbreviation for backend compatibility
+      const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const currentMonth = monthNames[today.getMonth()];
+
       // BACKEND V9.1 SPEC: Transfer = Two-Row Pattern
       // - typeOfOperation: "Transfer" (from Data!F2)
       // - Row A: Source (debit), Row B: Destination (credit)
       // - Both rows MUST have same ref ID
-      // - Property field is OPTIONAL for transfers
+      // - Property field is REQUIRED (use first property from account)
       // - Detail must contain "Transfer to" or "Transfer from"
+      
+      // Use the first property from the user's account (backend filters by JWT)
+      const userProperty = properties[0];
       
       // Row A: Source Transaction (Money Leaving - DEBIT)
       const sourceTransaction = {
         day: today.getDate().toString(),
-        month: getMonthAbbreviation(today.getMonth() + 1),
+        month: currentMonth, // UPPERCASE month (NOV, DEC, etc.)
         year: today.getFullYear().toString(),
-        property: '', // OPTIONAL for transfers (V9.1)
+        property: userProperty, // REQUIRED - use first property from account
         typeOfOperation: 'Transfer', // Must be "Transfer" from Data!F2
         typeOfPayment: fromAccount, // Source account
         detail: note || `Transfer to ${toAccount}`, // Must contain "Transfer to"
@@ -112,9 +140,9 @@ export default function TransferModal({
       // Row B: Destination Transaction (Money Entering - CREDIT)
       const destinationTransaction = {
         day: today.getDate().toString(),
-        month: getMonthAbbreviation(today.getMonth() + 1),
+        month: currentMonth, // UPPERCASE month (NOV, DEC, etc.)
         year: today.getFullYear().toString(),
-        property: '', // OPTIONAL for transfers (V9.1)
+        property: userProperty, // REQUIRED - use first property from account
         typeOfOperation: 'Transfer', // Must be "Transfer" from Data!F2
         typeOfPayment: toAccount, // Destination account
         detail: note || `Transfer from ${fromAccount}`, // Must contain "Transfer from"
@@ -140,18 +168,50 @@ export default function TransferModal({
       const destinationResponse = await apiService.submitTransaction(destinationTransaction);
       
       if (destinationResponse.ok) {
+        console.log('✅ Both transfer rows submitted successfully');
         showSuccess(
           'Transfer Successful',
           `₿${transferAmount.toLocaleString()} transferred from ${fromAccount} to ${toAccount}`,
           () => {
-            onTransferComplete?.();
-            onClose();
-            // Reset form
-            setAmount('');
-            setNote('');
-            if (accounts.length > 0) {
-              setFromAccount(accounts[0]);
-              setToAccount(accounts[1] || accounts[0]);
+            console.log('🔔 Transfer success alert onConfirm triggered');
+            try {
+              // Call completion callback if provided
+              if (onTransferComplete && typeof onTransferComplete === 'function') {
+                console.log('📞 Calling onTransferComplete callback');
+                onTransferComplete();
+                console.log('✅ onTransferComplete completed');
+              }
+            } catch (err) {
+              console.error('❌ Error in onTransferComplete callback:', err);
+            }
+            
+            try {
+              console.log('🔄 Resetting form state');
+              // Reset form state only if still mounted
+              if (isMountedRef.current) {
+                setAmount('');
+                setNote('');
+                if (accounts.length > 0) {
+                  setFromAccount(accounts[0]);
+                  setToAccount(accounts[1] || accounts[0]);
+                }
+                console.log('✅ Form reset complete');
+              } else {
+                console.log('⚠️ Component unmounted, skipping form reset');
+              }
+            } catch (err) {
+              console.error('❌ Error resetting form:', err);
+            }
+            
+            try {
+              console.log('🚪 Closing transfer modal');
+              // Close modal LAST with a small delay to ensure state updates complete
+              setTimeout(() => {
+                onClose();
+                console.log('✅ Transfer modal closed');
+              }, 50);
+            } catch (err) {
+              console.error('❌ Error closing modal:', err);
             }
           }
         );
@@ -192,11 +252,18 @@ export default function TransferModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          style={styles.content} 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        {/* Show loading if data not available */}
+        {(!accounts || accounts.length === 0 || !properties || properties.length === 0) && visible ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={COLORS.YELLOW} />
+            <Text style={styles.loadingText}>Loading account data...</Text>
+          </View>
+        ) : (
+          <ScrollView 
+            style={styles.content} 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
           {/* From Account */}
           <View style={styles.field}>
             <Text style={styles.label}>From Account</Text>
@@ -281,6 +348,7 @@ export default function TransferModal({
             </TouchableOpacity>
           </View>
         </ScrollView>
+        )}
       </View>
 
       {/* Branded Alert */}
@@ -301,7 +369,7 @@ export default function TransferModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.GREY_PRIMARY,
+    backgroundColor: COLORS.BACKGROUND,
   },
   header: {
     flexDirection: 'row',
@@ -321,8 +389,8 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.GREY_SECONDARY,
+    borderRadius: BORDER_RADIUS.pill,
+    backgroundColor: COLORS.CARD_PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -349,7 +417,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Aileron-Bold',
   },
   input: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     borderRadius: RADIUS.MD,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
@@ -360,12 +428,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Aileron-Regular',
   },
   summary: {
-    backgroundColor: COLORS.SURFACE_1,
+    backgroundColor: COLORS.CARD_PRIMARY,
     borderRadius: RADIUS.MD,
     padding: SPACING.LG,
     marginBottom: SPACING.XL,
     borderWidth: 1,
-    borderColor: COLORS.YELLOW,
+    borderColor: COLORS.BRAND_YELLOW,
     ...SHADOWS.YELLOW_GLOW,
   },
   summaryTitle: {
@@ -421,10 +489,22 @@ const styles = StyleSheet.create({
   transferButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.BLACK,
+    color: COLORS.BRAND_BLACK,
     fontFamily: 'Aileron-Bold',
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.XL,
+  },
+  loadingText: {
+    marginTop: SPACING.MD,
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+    fontFamily: 'Aileron-Regular',
   },
 });

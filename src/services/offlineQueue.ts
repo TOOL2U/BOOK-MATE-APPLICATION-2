@@ -18,11 +18,22 @@ class OfflineQueue {
 
   async initialize() {
     try {
+      // Load local queue from storage
       const storedQueue = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
       this.queue = storedQueue ? JSON.parse(storedQueue) : [];
+      
+      // Process queue in background (don't await - non-blocking)
+      // This allows app to launch even if API is down
+      this.processQueue().catch((error) => {
+        // Silently log errors during initialization
+        Logger.warn('Could not process queue during initialization (offline mode):', error);
+        // Don't throw - user can manually sync later
+      });
     } catch (error) {
+      // Even loading local queue failed - just log it
       Logger.error('Failed to load offline queue:', error);
       this.queue = [];
+      // Don't throw - let app continue
     }
   }
 
