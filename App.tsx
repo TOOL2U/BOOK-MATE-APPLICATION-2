@@ -324,9 +324,12 @@ export default function App() {
 
   // Handle successful login - increment key to force fresh data load
   const handleLoginSuccess = () => {
+    const startTime = Date.now();
     console.log('🔑 User logged in - forcing fresh data load');
     setAuthenticated(true);
     setUserKey(prev => prev + 1); // Force remount with fresh data
+    const endTime = Date.now();
+    console.log(`⏱️ handleLoginSuccess took: ${endTime - startTime}ms`);
   };
 
   // Handle logout (can be called from any screen)

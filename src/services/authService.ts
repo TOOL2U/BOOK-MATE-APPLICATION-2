@@ -20,15 +20,30 @@ const STORAGE_KEYS = {
  */
 export async function login(email: string, password: string): Promise<LoginResponse> {
   try {
+    console.log('🔐 Starting login request...');
+    const requestStart = Date.now();
+    
+    // Add 30 second timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
     const response = await fetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
+    const requestEnd = Date.now();
+    console.log(`⏱️ Login API request took: ${requestEnd - requestStart}ms`);
 
+    const parseStart = Date.now();
     const data: LoginResponse = await response.json();
+    const parseEnd = Date.now();
+    console.log(`⏱️ Parsing response took: ${parseEnd - parseStart}ms`);
     
     // DEBUG: Log the actual response
     console.log('🔍 Login response:', JSON.stringify(data, null, 2));
@@ -37,6 +52,8 @@ export async function login(email: string, password: string): Promise<LoginRespo
     const token = data.tokens?.accessToken || data.token;
     
     if (data.success && token && data.user) {
+      const storageStart = Date.now();
+      
       // Add displayName if not present
       const user = {
         ...data.user,
@@ -60,6 +77,9 @@ export async function login(email: string, password: string): Promise<LoginRespo
         [STORAGE_KEYS.ACCOUNT, JSON.stringify(account)],
       ]);
       
+      const storageEnd = Date.now();
+      console.log(`⏱️ AsyncStorage save took: ${storageEnd - storageStart}ms`);
+      
       // DEBUG: Verify token was saved
       const savedToken = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       console.log('🔑 Token saved:', savedToken ? `${savedToken.substring(0, 20)}...` : '❌ FAILED TO SAVE');
@@ -75,6 +95,13 @@ export async function login(email: string, password: string): Promise<LoginRespo
 
     return data;
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('Login timeout after 30 seconds');
+      return {
+        success: false,
+        error: 'Login request timed out. Please check your internet connection and try again.',
+      };
+    }
     console.error('Login error:', error);
     return {
       success: false,

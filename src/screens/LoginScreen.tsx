@@ -43,14 +43,23 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     }
 
     setLoading(true);
+    const startTime = Date.now();
+    console.log('⏱️ Login started...');
 
     try {
+      const loginStart = Date.now();
       const response = await login(email.trim().toLowerCase(), password);
+      const loginEnd = Date.now();
+      console.log(`⏱️ Login API call took: ${loginEnd - loginStart}ms`);
 
       if (response.success) {
         // Success - navigate to main app
-        console.log('Login successful:', response.user?.email);
+        console.log('✅ Login successful:', response.user?.email);
+        const beforeSuccess = Date.now();
         onLoginSuccess();
+        const afterSuccess = Date.now();
+        console.log(`⏱️ onLoginSuccess() took: ${afterSuccess - beforeSuccess}ms`);
+        console.log(`⏱️ Total login process: ${afterSuccess - startTime}ms`);
       } else {
         // Show error message from API
         Alert.alert(
