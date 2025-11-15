@@ -21,7 +21,7 @@ export function Card({ children, style, elevated = false, padding = 'md', glowEf
   const getShadowStyle = () => {
     if (glowEffect) return SHADOWS.YELLOW_GLOW;
     if (elevated) return SHADOWS.MEDIUM;
-    return SHADOWS.BLACK_SMALL;
+    return SHADOWS.SMALL;
   };
 
   return (

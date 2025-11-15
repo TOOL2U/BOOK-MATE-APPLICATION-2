@@ -6,8 +6,8 @@ import AnimatedTabIcon from './AnimatedTabIcon';
 import { COLORS } from '../config/theme';
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  // Only show tabs that should be visible (Home, Balance, P&L, Activity)
-  const visibleTabNames = ['Home', 'Balance', 'P&L', 'Activity'];
+  // Only show tabs that should be visible (Home, Accounts, P&L, Activity)
+  const visibleTabNames = ['Home', 'Accounts', 'P&L', 'Activity'];
   const visibleRoutes = state.routes.filter(route => visibleTabNames.includes(route.name));
 
   return (
@@ -51,7 +51,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
           switch (route.name) {
             case 'Home':
               return { name: 'home-outline', iconType: undefined };
-            case 'Balance':
+            case 'Accounts':
               return { name: 'wallet-outline', iconType: undefined };
             case 'P&L':
               return { name: 'chart-line', iconType: 'material' as const };
@@ -64,9 +64,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
         const iconProps = getIconProps();
 
-        // Adjust spacing for Balance (move left) and P&L (move right)
+        // Adjust spacing for Accounts (move left) and P&L (move right)
         const getTabStyle = () => {
-          if (route.name === 'Balance') {
+          if (route.name === 'Accounts') {
             return [styles.tabItem, { marginRight: 20 }];
           } else if (route.name === 'P&L') {
             return [styles.tabItem, { marginLeft: 20 }];

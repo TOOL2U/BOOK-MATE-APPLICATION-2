@@ -754,10 +754,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Aileron-Bold',
   },
   debitLabel: {
-    color: '#FF4444', // Red color
+    color: COLORS.EXPENSE_RED,
   },
   creditLabel: {
-    color: '#4CAF50', // Green color
+    color: COLORS.REVENUE_GREEN,
   },
   inputDisabled: {
     opacity: 0.4,

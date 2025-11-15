@@ -23,7 +23,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import UploadScreen from './src/screens/UploadScreen';
 import ManualEntryScreen from './src/screens/ManualEntryScreen';
-import BalanceScreen from './src/screens/BalanceScreen';
+import AccountsScreen from './src/screens/AccountsScreen'; // Renamed from BalanceScreen
 import PLScreen from './src/screens/PLScreen';
 import InboxScreen from './src/screens/InboxScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -177,8 +177,7 @@ function MainNavigator({ onLogout }: { onLogout: () => void }) {
           }}
         />
         <Tab.Screen
-          name="Balance"
-          component={BalanceScreen}
+          name="Accounts"
           options={{
             tabBarIcon: ({ color, size, focused }) => (
               <AnimatedTabIcon
@@ -189,7 +188,15 @@ function MainNavigator({ onLogout }: { onLogout: () => void }) {
               />
             ),
           }}
-        />
+        >
+          {(props) => (
+            <AccountsScreen
+              {...props}
+              onOpenWizardModal={() => setWizardModalVisible(true)}
+              onOpenTransferModal={() => setTransferModalVisible(true)}
+            />
+          )}
+        </Tab.Screen>
         <Tab.Screen
           name="P&L"
           component={PLScreen}

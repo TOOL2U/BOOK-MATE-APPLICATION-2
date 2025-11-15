@@ -1,3 +1,8 @@
+/**
+ * P&L Overview Dashboard (Revolut Style)
+ * Clean, premium dashboard showing high-level P&L metrics, insights, and preview items
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,7 +13,9 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { apiService } from '../services/api';
 import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import type { PLData } from '../types';
@@ -42,6 +49,7 @@ export default function PLScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [monthData, setMonthData] = useState<PLData | null>(null);
   const [yearData, setYearData] = useState<PLData | null>(null);
+  const [period, setPeriod] = useState<'month' | 'year'>('month');
   
   // Branded Alert
   const {
@@ -53,14 +61,12 @@ export default function PLScreen() {
   
   // Overhead expenses modal state
   const [overheadModalVisible, setOverheadModalVisible] = useState(false);
-  const [overheadPeriod, setOverheadPeriod] = useState<'month' | 'year'>('month');
   const [overheadExpenses, setOverheadExpenses] = useState<OverheadExpense[]>([]);
   const [overheadTotal, setOverheadTotal] = useState(0);
   const [loadingOverheads, setLoadingOverheads] = useState(false);
 
   // Property/Person expenses modal state
   const [propertyModalVisible, setPropertyModalVisible] = useState(false);
-  const [propertyPeriod, setPropertyPeriod] = useState<'month' | 'year'>('month');
   const [propertyExpenses, setPropertyExpenses] = useState<PropertyPersonExpense[]>([]);
   const [propertyTotal, setPropertyTotal] = useState(0);
   const [loadingProperty, setLoadingProperty] = useState(false);
@@ -69,15 +75,12 @@ export default function PLScreen() {
     try {
       const response = await apiService.getPL();
       if (response.ok && response.data?.data) {
-        // Handle nested data structure: response.data.data.month/year
         setMonthData(response.data.data.month);
         setYearData(response.data.data.year);
       } else {
-        console.error('P&L response not ok:', response);
         showError('Error', 'Failed to fetch P&L data: Invalid response');
       }
     } catch (error) {
-      console.error('P&L fetch error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       showError('Error', `Failed to fetch P&L data: ${errorMessage}`);
     } finally {
@@ -95,8 +98,7 @@ export default function PLScreen() {
     fetchPLData();
   };
 
-    const handleOverheadCardPress = async (period: 'month' | 'year') => {
-    setOverheadPeriod(period);
+  const handleOverheadCardPress = async () => {
     setOverheadModalVisible(true);
     setLoadingOverheads(true);
     
@@ -104,18 +106,14 @@ export default function PLScreen() {
       const response = await apiService.getOverheadExpenses(period);
       if (response.ok && response.data && Array.isArray(response.data)) {
         setOverheadExpenses(response.data);
-        // FIX: Use totalExpense from API response, or calculate from expense field (not amount)
         const total = response.totalExpense || response.data.reduce((sum: number, item: any) => sum + (item.expense || 0), 0);
         setOverheadTotal(total);
       } else {
-        // Handle case where no data is available
-        console.warn('No overhead expenses data available:', response.error || 'Unknown error');
         setOverheadExpenses([]);
         setOverheadTotal(0);
         showError('Error', response.error || 'Failed to fetch overhead expenses');
       }
     } catch (error) {
-      console.error('Overhead expenses fetch error:', error);
       setOverheadExpenses([]);
       setOverheadTotal(0);
       showError('Error', 'Failed to fetch overhead expenses');
@@ -124,8 +122,7 @@ export default function PLScreen() {
     }
   };
 
-  const handlePropertyCardPress = async (period: 'month' | 'year') => {
-    setPropertyPeriod(period);
+  const handlePropertyCardPress = async () => {
     setPropertyModalVisible(true);
     setLoadingProperty(true);
     
@@ -133,18 +130,14 @@ export default function PLScreen() {
       const response = await apiService.getPropertyPersonExpenses(period);
       if (response.ok && response.data && Array.isArray(response.data)) {
         setPropertyExpenses(response.data);
-        // FIX: Use totalExpense from API response, or calculate from expense field (not amount)
         const total = response.totalExpense || response.data.reduce((sum: number, item: any) => sum + (item.expense || 0), 0);
         setPropertyTotal(total);
       } else {
-        // Handle case where no data is available
-        console.warn('No property/person expenses data available:', response.error || 'Unknown error');
         setPropertyExpenses([]);
         setPropertyTotal(0);
         showError('Error', response.error || 'Failed to fetch property/person expenses');
       }
     } catch (error) {
-      console.error('Property/person expenses fetch error:', error);
       setPropertyExpenses([]);
       setPropertyTotal(0);
       showError('Error', 'Failed to fetch property/person expenses');
@@ -154,11 +147,10 @@ export default function PLScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
+    return amount.toLocaleString('en-US', {
       minimumFractionDigits: 0,
-    }).format(amount);
+      maximumFractionDigits: 0,
+    });
   };
 
   const formatPercentage = (value: number) => {
@@ -168,151 +160,193 @@ export default function PLScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.YELLOW} />
+        <ActivityIndicator size="large" color={COLORS.BRAND_YELLOW} />
       </View>
     );
   }
 
-  const KPICard = ({
-    label,
-    value,
-    isPercentage = false,
-    color = COLORS.YELLOW,
-    onPress,
-  }: {
-    label: string;
-    value: number;
-    isPercentage?: boolean;
-    color?: string;
-    onPress?: () => void;
-  }) => {
-    const content = (
-      <View style={styles.kpiContent}>
-        <View style={styles.kpiTextContainer}>
-          <Text style={styles.kpiLabel}>{label}</Text>
-          <Text style={[styles.kpiValue, { color }]}>
-            {isPercentage ? formatPercentage(value) : formatCurrency(value)}
-          </Text>
-        </View>
-        {onPress && (
-          <Ionicons 
-            name="chevron-forward" 
-            size={24} 
-            color={COLORS.YELLOW}
-            style={styles.kpiIcon}
-          />
-        )}
+  const currentData = period === 'month' ? monthData : yearData;
+  if (!currentData) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>No data available</Text>
       </View>
     );
+  }
 
-    if (onPress) {
-      return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-          <Card glowEffect={true} elevated={true}>
-            {content}
-          </Card>
-        </TouchableOpacity>
-      );
-    }
+  // GOP (Gross Operating Profit) = Revenue - Overheads
+  // Property/Person expenses are tracked separately and NOT included in GOP
+  const netResult = currentData.gop;
+  const isPositive = netResult >= 0;
 
-    return <Card>{content}</Card>;
+  // Get top 3 items for preview (will be fetched when modal opens)
+  const getTopPreviewText = (type: 'overhead' | 'property') => {
+    return `Tap to view breakdown`;
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Premium gradient background */}
+      <LinearGradient
+        colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        locations={[0, 0.3, 0.65, 1]}
+      />
+
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.YELLOW}
-            colors={[COLORS.YELLOW]}
+            tintColor={COLORS.BRAND_YELLOW}
+            colors={[COLORS.BRAND_YELLOW]}
           />
         }
       >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <LogoBM size={64} />
-        </View>
-        
         {/* Header */}
-        <Text style={styles.title}>P&L Dashboard</Text>
-        <Text style={styles.subtitle}>Profit & Loss Overview</Text>
-
-        {/* Month Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Month to Date</Text>
-          {monthData && (
-            <View style={styles.kpiGrid}>
-              <KPICard
-                label="Total Revenue"
-                value={monthData.revenue}
-                color={COLORS.SUCCESS}
-              />
-              <KPICard
-                label="Total Overheads"
-                value={monthData.overheads}
-                color={COLORS.ERROR}
-                onPress={() => handleOverheadCardPress('month')}
-              />
-              <KPICard
-                label="Property/Person Expense"
-                value={monthData.propertyPersonExpense}
-                color={COLORS.WARNING}
-                onPress={() => handlePropertyCardPress('month')}
-              />
-              <KPICard
-                label="Gross Operating Profit"
-                value={monthData.gop}
-                color={COLORS.YELLOW}
-              />
-              <KPICard
-                label="EBITDA Margin"
-                value={monthData.ebitdaMargin}
-                isPercentage
-                color={COLORS.INFO}
-              />
-            </View>
-          )}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Profit & Loss</Text>
+            <Text style={styles.subtitle}>
+              {period === 'month' ? 'This month' : 'This year'} • THB
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.periodSelector}
+            onPress={() => setPeriod(period === 'month' ? 'year' : 'month')}
+          >
+            <Text style={styles.periodText}>
+              {period === 'month' ? 'This month' : 'This year'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={COLORS.TEXT_SECONDARY} />
+          </TouchableOpacity>
         </View>
 
-        {/* Year Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Year to Date</Text>
-          {yearData && (
-            <View style={styles.kpiGrid}>
-              <KPICard
-                label="Total Revenue"
-                value={yearData.revenue}
-                color={COLORS.SUCCESS}
-              />
-              <KPICard
-                label="Total Overheads"
-                value={yearData.overheads}
-                color={COLORS.ERROR}
-                onPress={() => handleOverheadCardPress('year')}
-              />
-              <KPICard
-                label="Property/Person Expense"
-                value={yearData.propertyPersonExpense}
-                color={COLORS.WARNING}
-                onPress={() => handlePropertyCardPress('year')}
-              />
-              <KPICard
-                label="Gross Operating Profit"
-                value={yearData.gop}
-                color={COLORS.YELLOW}
-              />
-              <KPICard
-                label="EBITDA Margin"
-                value={yearData.ebitdaMargin}
-                isPercentage
-                color={COLORS.INFO}
-              />
-            </View>
-          )}
+        {/* Hero Net Result Card */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <Text style={styles.heroLabel}>Gross Operating Profit {period === 'month' ? 'this month' : 'this year'}</Text>
+          </View>
+          <Text style={[styles.heroValue, { color: isPositive ? COLORS.REVENUE_GREEN : COLORS.EXPENSE_RED }]}>
+            ฿{formatCurrency(Math.abs(netResult))}
+          </Text>
+          <Text style={styles.heroSubtext}>Revenue – Overheads</Text>
         </View>
+
+        {/* Metric Row - 4 Small Cards */}
+        <View style={styles.metricRow}>
+          <View style={[styles.metricCard, styles.metricCardHalf]}>
+            <Text style={styles.metricLabel}>Revenue</Text>
+            <Text style={[styles.metricValue, { color: COLORS.REVENUE_GREEN }]}>
+              ฿{formatCurrency(currentData.revenue)}
+            </Text>
+            <Text style={styles.metricPeriod}>Total income {period === 'month' ? 'this month' : 'this year'}</Text>
+          </View>
+
+          <View style={[styles.metricCard, styles.metricCardHalf]}>
+            <Text style={styles.metricLabel}>Overheads</Text>
+            <Text style={[styles.metricValue, { color: COLORS.EXPENSE_RED }]}>
+              ฿{formatCurrency(currentData.overheads)}
+            </Text>
+            <Text style={styles.metricPeriod}>All operating expenses</Text>
+          </View>
+        </View>
+
+        <View style={[styles.metricRow, styles.metricRowSpaced]}>
+          <View style={[styles.metricCard, styles.metricCardHalf]}>
+            <Text style={styles.metricLabel}>Property / Person</Text>
+            <Text style={[styles.metricValue, { color: COLORS.EXPENSE_RED }]}>
+              ฿{formatCurrency(currentData.propertyPersonExpense)}
+            </Text>
+            <Text style={styles.metricPeriod}>Property-related costs</Text>
+          </View>
+
+          <View style={[styles.metricCard, styles.metricCardHalf]}>
+            <Text style={styles.metricLabel}>EBITDA</Text>
+            <Text style={[styles.metricValue, { color: COLORS.BRAND_YELLOW }]}>
+              {formatPercentage(currentData.ebitdaMargin)}
+            </Text>
+            <Text style={styles.metricPeriod}>Earnings before depreciation</Text>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Insights Pair */}
+        <View style={styles.insightsRow}>
+          <View style={[styles.insightCard, { marginRight: 6 }]}>
+            <Text style={styles.insightLabel}>Earned {period === 'month' ? 'this month' : 'this year'}</Text>
+            <Text style={styles.insightValue}>฿{formatCurrency(currentData.revenue)}</Text>
+            <Text style={styles.insightSubtext}>
+              {period === 'month' 
+                ? `All time: ฿${formatCurrency(yearData?.revenue || 0)}`
+                : `GOP: ฿${formatCurrency(currentData.gop)}`
+              }
+            </Text>
+          </View>
+
+          <View style={[styles.insightCard, { marginLeft: 6 }]}>
+            <Text style={styles.insightLabel}>Progress {period === 'month' ? 'this month' : 'this year'}</Text>
+            <Text style={styles.insightValue}>฿{formatCurrency(currentData.gop)}</Text>
+            <Text style={styles.insightSubtext}>
+              EBITDA: {formatPercentage(currentData.ebitdaMargin)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Overheads Summary Card */}
+        <TouchableOpacity
+          style={styles.summaryCard}
+          onPress={handleOverheadCardPress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.summaryHeader}>
+            <View>
+              <Text style={styles.summaryLabel}>Overheads ({period === 'month' ? 'this month' : 'this year'})</Text>
+              <Text style={[styles.summaryValue, { color: COLORS.EXPENSE_RED }]}>
+                ฿{formatCurrency(currentData.overheads)}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.TEXT_SECONDARY} />
+          </View>
+          <View style={styles.summaryPreview}>
+            <Text style={styles.summaryPreviewText}>{getTopPreviewText('overhead')}</Text>
+          </View>
+          <View style={styles.summaryFooter}>
+            <Text style={styles.summaryLink}>View full breakdown</Text>
+            <Ionicons name="arrow-forward" size={16} color={COLORS.BRAND_YELLOW} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Property / Person Summary Card */}
+        <TouchableOpacity
+          style={styles.summaryCard}
+          onPress={handlePropertyCardPress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.summaryHeader}>
+            <View>
+              <Text style={styles.summaryLabel}>Property / Person ({period === 'month' ? 'this month' : 'this year'})</Text>
+              <Text style={[styles.summaryValue, { color: COLORS.EXPENSE_RED }]}>
+                ฿{formatCurrency(currentData.propertyPersonExpense)}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={COLORS.TEXT_SECONDARY} />
+          </View>
+          <View style={styles.summaryPreview}>
+            <Text style={styles.summaryPreviewText}>{getTopPreviewText('property')}</Text>
+          </View>
+          <View style={styles.summaryFooter}>
+            <Text style={styles.summaryLink}>View full breakdown</Text>
+            <Ionicons name="arrow-forward" size={16} color={COLORS.BRAND_YELLOW} />
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Overhead Expenses Modal */}
@@ -320,7 +354,7 @@ export default function PLScreen() {
         visible={overheadModalVisible}
         onClose={() => setOverheadModalVisible(false)}
         expenses={overheadExpenses}
-        period={overheadPeriod}
+        period={period}
         total={overheadTotal}
       />
 
@@ -329,7 +363,7 @@ export default function PLScreen() {
         visible={propertyModalVisible}
         onClose={() => setPropertyModalVisible(false)}
         expenses={propertyExpenses}
-        period={propertyPeriod}
+        period={period}
         total={propertyTotal}
       />
 
@@ -344,7 +378,7 @@ export default function PLScreen() {
         confirmText={alertConfig?.confirmText}
         cancelText={alertConfig?.cancelText}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -359,83 +393,215 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    padding: 20,
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 1,
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    marginTop: 8,
   },
   title: {
-    fontSize: 32,
-    fontFamily: 'MadeMirage-Regular',
+    fontSize: 28,
+    fontFamily: 'BebasNeue-Regular',
     color: COLORS.TEXT_PRIMARY,
-    textAlign: 'center',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    fontFamily: 'Aileron-Light',
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Aileron-Bold',
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  kpiGrid: {
-    gap: 16,
-  },
-  kpiCard: {
-    backgroundColor: COLORS.CARD_PRIMARY,
-    padding: 16,
-    borderRadius: COMPONENT_RADIUS.card,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.BRAND_YELLOW,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    ...SHADOWS.SMALL,
-  },
-  kpiLabel: {
     fontSize: 14,
-    fontFamily: 'Aileron-Bold',
-    fontWeight: '600',
+    fontFamily: 'Aileron-Regular',
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginTop: 4,
   },
-  kpiValue: {
-    fontSize: 24,
-    fontFamily: 'Aileron-Bold',
-    fontWeight: '800',
-    color: COLORS.TEXT_PRIMARY,
-  },
-  kpiContent: {
+  periodSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: COLORS.CARD_SECONDARY,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    gap: 6,
   },
-  kpiTextContainer: {
+  periodText: {
+    fontSize: 13,
+    fontFamily: 'Aileron-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  heroCard: {
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 24,
+    marginBottom: 16,
+    ...SHADOWS.LARGE,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  heroLabel: {
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroValue: {
+    fontSize: 48,
+    fontFamily: 'BebasNeue-Regular',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  heroSubtext: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_MUTED,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  metricRowSpaced: {
+    marginTop: 4,
+  },
+  metricCard: {
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 16,
+    ...SHADOWS.SMALL,
+  },
+  metricCardHalf: {
     flex: 1,
   },
-  kpiIcon: {
-    marginLeft: 12,
+  metricLabel: {
+    fontSize: 11,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  metricValue: {
+    fontSize: 22,
+    fontFamily: 'Aileron-Bold',
+    marginBottom: 6,
+  },
+  metricPeriod: {
+    fontSize: 10,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginVertical: 16,
+  },
+  insightsRow: {
+    flexDirection: 'row',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  insightCard: {
+    flex: 1,
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 20,
+    minHeight: 140,
+    ...SHADOWS.SMALL,
+  },
+  insightLabel: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    opacity: 0.85,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  insightValue: {
+    fontSize: 24,
+    fontFamily: 'Aileron-Bold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: 12,
+  },
+  insightSubtext: {
+    fontSize: 12,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  summaryCard: {
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 18,
+    marginBottom: 16,
+    ...SHADOWS.SMALL,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  summaryValue: {
+    fontSize: 26,
+    fontFamily: 'Aileron-Bold',
+  },
+  summaryPreview: {
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    marginBottom: 14,
+  },
+  summaryPreviewText: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  summaryFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  summaryLink: {
+    fontSize: 13,
+    fontFamily: 'Aileron-SemiBold',
+    color: COLORS.BRAND_YELLOW,
   },
 });
 

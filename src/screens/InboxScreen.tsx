@@ -1,34 +1,55 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Activity Screen (Revolut-Style)
+ * Upgraded to match the premium polish of Accounts & P&L screens
+ * Features: Activity summary, search/filters, grouped transactions, detail modal
+ */
+
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  SectionList,
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
+  Modal,
   Animated,
+  Easing,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { apiService } from '../services/api';
-import { COLORS, SHADOWS } from '../config/theme';
-import { COMPONENT_RADIUS, BORDER_RADIUS } from '../constants/borderRadius';
+import { COLORS, SHADOWS, SPACING } from '../config/theme';
+import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import type { TransactionWithRow } from '../types';
 import BrandedAlert from '../components/BrandedAlert';
 import { useBrandedAlert } from '../hooks/useBrandedAlert';
-import LogoBM from '../components/LogoBM';
 
 type InboxScreenRouteProp = RouteProp<{ Inbox: { highlightLatest?: boolean } }, 'Inbox'>;
+type FilterType = 'all' | 'income' | 'expense' | 'transfer';
+
+interface GroupedTransaction {
+  title: string;
+  data: TransactionWithRow[];
+}
 
 export default function InboxScreen() {
   const route = useRoute<InboxScreenRouteProp>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState<TransactionWithRow[]>([]);
-  const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
-  const highlightAnim = useState(new Animated.Value(0))[0];
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithRow | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [slideAnim] = useState(new Animated.Value(40));
+  const [opacityAnim] = useState(new Animated.Value(0));
 
   // Branded alert hook
   const {
@@ -46,29 +67,6 @@ export default function InboxScreen() {
       
       if (response.ok && response.data) {
         setTransactions(response.data || []);
-        
-        // If navigated with highlightLatest flag, highlight the first (newest) transaction
-        if (route.params?.highlightLatest && response.data && response.data.length > 0) {
-          const latestRow = response.data[0].rowNumber;
-          setHighlightedRow(latestRow);
-          
-          // Animate highlight
-          Animated.sequence([
-            Animated.timing(highlightAnim, {
-              toValue: 1,
-              duration: 300,
-              useNativeDriver: false,
-            }),
-            Animated.delay(2000),
-            Animated.timing(highlightAnim, {
-              toValue: 0,
-              duration: 500,
-              useNativeDriver: false,
-            }),
-          ]).start(() => {
-            setHighlightedRow(null);
-          });
-        }
       } else {
         setTransactions([]);
       }
@@ -86,10 +84,8 @@ export default function InboxScreen() {
     fetchInbox();
   }, []);
 
-  // Watch for navigation with highlightLatest parameter
   useEffect(() => {
     if (route.params?.highlightLatest) {
-      // Refetch to get the latest transaction
       fetchInbox();
     }
   }, [route.params?.highlightLatest]);
@@ -117,11 +113,285 @@ export default function InboxScreen() {
     );
   };
 
+  const handleTransactionPress = (transaction: TransactionWithRow) => {
+    setSelectedTransaction(transaction);
+    setDetailModalVisible(true);
+    
+    // Animate modal
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closeDetailModal = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 40,
+        duration: 200,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setDetailModalVisible(false);
+      setSelectedTransaction(null);
+      slideAnim.setValue(40);
+      opacityAnim.setValue(0);
+    });
+  };
+
+  // Helper functions
+  const getMonthNumber = (month: string) => {
+    const months: { [key: string]: string } = {
+      JAN: '01', FEB: '02', MAR: '03', APR: '04', MAY: '05', JUN: '06',
+      JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12',
+    };
+    return months[month] || '01';
+  };
+
+  const formatDateHeader = (dateStr: string) => {
+    const [day, month, year] = dateStr.split('/');
+    const date = new Date(year + '-' + getMonthNumber(month) + '-' + day);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  };
+
+  const parseDate = (dateHeader: string): Date => {
+    if (dateHeader === 'Today') {
+      return new Date();
+    } else if (dateHeader === 'Yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return yesterday;
+    } else {
+      // Parse format like "15 Nov 2025"
+      return new Date(dateHeader);
+    }
+  };
+
+  // Calculate monthly summary
+  const monthlySummary = useMemo(() => {
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    const currentYear = new Date().getFullYear().toString();
+    
+    const thisMonthTransactions = transactions.filter(
+      tx => tx.month === currentMonth && tx.year === currentYear
+    );
+    
+    const totalIncome = thisMonthTransactions.reduce((sum, tx) => sum + tx.credit, 0);
+    const totalExpenses = thisMonthTransactions.reduce((sum, tx) => sum + tx.debit, 0);
+    const net = totalIncome - totalExpenses;
+    
+    return {
+      count: thisMonthTransactions.length,
+      income: totalIncome,
+      expenses: totalExpenses,
+      net,
+    };
+  }, [transactions]);
+
+  // Filter and group transactions
+  const groupedTransactions = useMemo(() => {
+    let filtered = transactions;
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(tx =>
+        tx.detail?.toLowerCase().includes(query) ||
+        tx.property?.toLowerCase().includes(query) ||
+        tx.typeOfOperation?.toLowerCase().includes(query) ||
+        tx.typeOfPayment?.toLowerCase().includes(query) ||
+        tx.ref?.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply type filter
+    if (filterType !== 'all') {
+      filtered = filtered.filter(tx => {
+        if (filterType === 'income') return tx.credit > 0;
+        if (filterType === 'expense') return tx.debit > 0;
+        if (filterType === 'transfer') return tx.typeOfOperation?.toLowerCase().includes('transfer');
+        return true;
+      });
+    }
+
+    // Group by date
+    const groups: { [key: string]: TransactionWithRow[] } = {};
+    filtered.forEach(tx => {
+      const dateKey = tx.day + '/' + tx.month + '/' + tx.year;
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(tx);
+    });
+
+    // Convert to section list format
+    return Object.entries(groups)
+      .map(([date, data]) => ({
+        title: formatDateHeader(date),
+        data,
+      }))
+      .sort((a, b) => {
+        // Sort by date descending (newest first)
+        const dateA = parseDate(a.title);
+        const dateB = parseDate(b.title);
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [transactions, searchQuery, filterType]);
+
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
-      style: 'currency',
-      currency: 'THB',
-    }).format(amount);
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const getBankLogo = (typeOfPayment: string) => {
+    const nameLower = typeOfPayment?.toLowerCase() || '';
+    if (nameLower.includes('bangkok bank')) {
+      return require('../../assets/icons/Banks/Bangkok_Bank_2023_(English_version)-cropped (1).png');
+    }
+    if (nameLower.includes('krung thai')) {
+      return require('../../assets/icons/Banks/Krung_Thai_Bank_logo.svg-removebg-preview.png');
+    }
+    return null;
+  };
+
+  const isCashTransaction = (typeOfPayment: string) => {
+    return typeOfPayment?.toLowerCase().includes('cash');
+  };
+
+  const getTransactionType = (tx: TransactionWithRow): 'income' | 'expense' | 'transfer' => {
+    if (tx.typeOfOperation?.toLowerCase().includes('transfer')) return 'transfer';
+    if (tx.credit > 0) return 'income';
+    return 'expense';
+  };
+
+  const renderFilterChip = (type: FilterType, label: string) => (
+    <TouchableOpacity
+      key={type}
+      style={[styles.filterChip, filterType === type && styles.filterChipActive]}
+      onPress={() => setFilterType(type)}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.filterChipText, filterType === type && styles.filterChipTextActive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderTransactionCard = (transaction: TransactionWithRow) => {
+    const txType = getTransactionType(transaction);
+    const amount = txType === 'expense' ? transaction.debit : transaction.credit;
+    const bankLogo = getBankLogo(transaction.typeOfPayment);
+    const isCash = isCashTransaction(transaction.typeOfPayment);
+
+    return (
+      <TouchableOpacity
+        style={styles.transactionCard}
+        onPress={() => handleTransactionPress(transaction)}
+        activeOpacity={0.7}
+      >
+        {/* Left: Account Avatar */}
+        <View style={[styles.accountAvatar, (bankLogo || isCash) && styles.accountAvatarTransparent]}>
+          {bankLogo ? (
+            <Image source={bankLogo} style={styles.bankLogoSmall} resizeMode="contain" />
+          ) : isCash ? (
+            <Ionicons name="cash-outline" size={20} color={COLORS.BRAND_YELLOW} />
+          ) : (
+            <Text style={styles.accountAvatarText}>
+              {transaction.typeOfPayment?.charAt(0).toUpperCase() || 'T'}
+            </Text>
+          )}
+        </View>
+
+        {/* Middle: Info Block */}
+        <View style={styles.transactionInfo}>
+          <Text style={styles.transactionTitle} numberOfLines={1}>
+            {transaction.detail || transaction.typeOfOperation || 'Transaction'}
+          </Text>
+          <Text style={styles.transactionMeta} numberOfLines={1}>
+            {transaction.property} · {transaction.typeOfPayment}
+          </Text>
+          {transaction.ref && (
+            <Text style={styles.transactionDetail} numberOfLines={1}>
+              {transaction.typeOfOperation} · Ref: {transaction.ref}
+            </Text>
+          )}
+        </View>
+
+        {/* Right: Amount & Delete */}
+        <View style={styles.transactionRight}>
+          <View style={styles.amountContainer}>
+            <Ionicons
+              name={
+                txType === 'income'
+                  ? 'arrow-up'
+                  : txType === 'expense'
+                  ? 'arrow-down'
+                  : 'swap-horizontal'
+              }
+              size={12}
+              color={
+                txType === 'income'
+                  ? COLORS.REVENUE_GREEN
+                  : txType === 'expense'
+                  ? COLORS.EXPENSE_RED
+                  : COLORS.BRAND_YELLOW
+              }
+              style={styles.amountIcon}
+            />
+            <Text
+              style={[
+                styles.transactionAmount,
+                {
+                  color:
+                    txType === 'income'
+                      ? COLORS.REVENUE_GREEN
+                      : txType === 'expense'
+                      ? COLORS.EXPENSE_RED
+                      : COLORS.BRAND_YELLOW,
+                },
+              ]}
+            >
+              {txType === 'expense' ? '-' : '+'}฿{formatCurrency(amount)}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => handleDelete(transaction.rowNumber)}
+            style={styles.deleteIconButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="trash-outline" size={16} color={COLORS.EXPENSE_RED} style={{ opacity: 0.6 }} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
   if (loading) {
@@ -133,103 +403,209 @@ export default function InboxScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.BRAND_YELLOW}
-          />
-        }
-      >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <LogoBM size={64} />
-        </View>
-        
-        {/* Header */}
-        <Text style={styles.title}>Activity</Text>
-        <Text style={styles.subtitle}>
-          {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
-        </Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Premium gradient background */}
+      <LinearGradient
+        colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        locations={[0, 0.3, 0.65, 1]}
+      />
 
-        {transactions.length === 0 ? (
+      <View style={styles.contentWrapper}>
+        {/* Header Section - Activity Summary */}
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Activity</Text>
+          <Text style={styles.subtitle}>
+            This month • {monthlySummary.count} transaction{monthlySummary.count !== 1 ? 's' : ''}
+          </Text>
+          <Text
+            style={[
+              styles.netAmount,
+              {
+                color:
+                  monthlySummary.net > 0
+                    ? COLORS.REVENUE_GREEN
+                    : monthlySummary.net < 0
+                    ? COLORS.EXPENSE_RED
+                    : COLORS.TEXT_SECONDARY,
+              },
+            ]}
+          >
+            Net: {monthlySummary.net >= 0 ? '+' : ''}฿{formatCurrency(Math.abs(monthlySummary.net))}
+          </Text>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={COLORS.TEXT_MUTED} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search transactions"
+            placeholderTextColor={COLORS.TEXT_MUTED}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={COLORS.TEXT_MUTED} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterRow}>
+          {renderFilterChip('all', 'All')}
+          {renderFilterChip('income', 'Income')}
+          {renderFilterChip('expense', 'Expenses')}
+          {renderFilterChip('transfer', 'Transfers')}
+        </View>
+
+        {/* Grouped Transaction List */}
+        {groupedTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No transactions yet</Text>
-            <Text style={styles.emptySubtext}>
-              Upload a receipt or add a manual entry to get started
-            </Text>
+            <Ionicons name="receipt-outline" size={64} color={COLORS.TEXT_MUTED} />
+            <Text style={styles.emptyTitle}>No transactions yet</Text>
+            <Text style={styles.emptySubtitle}>Add your first transaction to see it here</Text>
           </View>
         ) : (
-          <View style={styles.transactionList}>
-            {transactions.map((transaction) => {
-              const isHighlighted = highlightedRow === transaction.rowNumber;
-              const backgroundColor = isHighlighted
-                ? highlightAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [COLORS.CARD_PRIMARY, COLORS.BRAND_YELLOW + '40'], // Yellow with 40% opacity
-                  })
-                : COLORS.CARD_PRIMARY;
-
-              return (
-                <Animated.View
-                  key={transaction.rowNumber}
-                  style={[
-                    styles.transactionCard,
-                    isHighlighted && styles.transactionCardHighlighted,
-                    { backgroundColor },
-                  ]}
-                >
-                  <View style={styles.transactionHeader}>
-                    <Text style={styles.transactionDate}>
-                      {transaction.day}/{transaction.month}/{transaction.year}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDelete(transaction.rowNumber)}
-                      style={styles.deleteButton}
-                    >
-                      <Ionicons name="trash-outline" size={20} color={COLORS.ERROR} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <Text style={styles.transactionDetail}>{transaction.detail}</Text>
-
-                  <View style={styles.transactionMeta}>
-                    <Text style={styles.metaText}>{transaction.property}</Text>
-                    <Text style={styles.metaText}>•</Text>
-                    <Text style={styles.metaText} numberOfLines={2}>
-                      {transaction.typeOfPayment}
-                    </Text>
-                  </View>
-
-                  <View style={styles.transactionFooter}>
-                    <Text style={styles.categoryText}>
-                      {transaction.typeOfOperation}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.amountText,
-                        transaction.debit > 0 ? styles.debitText : styles.creditText,
-                      ]}
-                    >
-                      {transaction.debit > 0
-                        ? `-${formatCurrency(transaction.debit)}`
-                        : `+${formatCurrency(transaction.credit)}`}
-                    </Text>
-                  </View>
-
-                  {transaction.ref && (
-                    <Text style={styles.refText}>Ref: {transaction.ref}</Text>
-                  )}
-                </Animated.View>
-              );
-            })}
-          </View>
+          <SectionList
+            sections={groupedTransactions}
+            keyExtractor={(item) => item.rowNumber.toString()}
+            renderItem={({ item }) => renderTransactionCard(item)}
+            renderSectionHeader={({ section }) => (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderText}>{section.title}</Text>
+                <View style={styles.sectionHeaderDivider} />
+              </View>
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={COLORS.BRAND_YELLOW}
+                colors={[COLORS.BRAND_YELLOW]}
+              />
+            }
+          />
         )}
-      </ScrollView>
-      
+      </View>
+
+      {/* Transaction Detail Modal */}
+      <Modal
+        visible={detailModalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={closeDetailModal}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={closeDetailModal}
+          />
+
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              {
+                opacity: opacityAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <SafeAreaView style={styles.modalContent} edges={['bottom']}>
+              {/* Premium gradient background */}
+              <LinearGradient
+                colors={['#2a2a2a', '#1a1a1a', '#0d0d0d', '#050505']}
+                style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                locations={[0, 0.3, 0.65, 1]}
+                pointerEvents="none"
+              />
+
+              {/* Handle */}
+              <View style={styles.modalHandle} />
+
+              {/* Close Button */}
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeDetailModal}>
+                <Ionicons name="close" size={24} color={COLORS.TEXT_SECONDARY} />
+              </TouchableOpacity>
+
+              {selectedTransaction && (
+                <View style={styles.modalBody}>
+                  {/* Big Amount */}
+                  <Text
+                    style={[
+                      styles.modalAmount,
+                      {
+                        color:
+                          getTransactionType(selectedTransaction) === 'income'
+                            ? COLORS.REVENUE_GREEN
+                            : getTransactionType(selectedTransaction) === 'expense'
+                            ? COLORS.EXPENSE_RED
+                            : COLORS.BRAND_YELLOW,
+                      },
+                    ]}
+                  >
+                    {getTransactionType(selectedTransaction) === 'expense' ? '-' : '+'}฿
+                    {formatCurrency(
+                      getTransactionType(selectedTransaction) === 'expense'
+                        ? selectedTransaction.debit
+                        : selectedTransaction.credit
+                    )}
+                  </Text>
+
+                  {/* Date */}
+                  <Text style={styles.modalDate}>
+                    {selectedTransaction.day} {selectedTransaction.month} {selectedTransaction.year}
+                  </Text>
+
+                  {/* Details Section */}
+                  <View style={styles.modalDetailsSection}>
+                    <View style={styles.modalDetailRow}>
+                      <Text style={styles.modalDetailLabel}>Property / Person</Text>
+                      <Text style={styles.modalDetailValue}>{selectedTransaction.property}</Text>
+                    </View>
+
+                    <View style={styles.modalDetailRow}>
+                      <Text style={styles.modalDetailLabel}>Type of Operation</Text>
+                      <Text style={styles.modalDetailValue}>{selectedTransaction.typeOfOperation}</Text>
+                    </View>
+
+                    <View style={styles.modalDetailRow}>
+                      <Text style={styles.modalDetailLabel}>Type of Payment</Text>
+                      <Text style={styles.modalDetailValue}>{selectedTransaction.typeOfPayment}</Text>
+                    </View>
+
+                    {selectedTransaction.ref && (
+                      <View style={styles.modalDetailRow}>
+                        <Text style={styles.modalDetailLabel}>Reference</Text>
+                        <Text style={styles.modalDetailValue}>{selectedTransaction.ref}</Text>
+                      </View>
+                    )}
+
+                    <View style={styles.modalDetailRow}>
+                      <Text style={styles.modalDetailLabel}>Detail</Text>
+                      <Text style={[styles.modalDetailValue, styles.modalDetailValueMultiline]}>
+                        {selectedTransaction.detail}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <Text style={styles.modalFooter}>Synced to: BookMate P&L 2025</Text>
+                </View>
+              )}
+            </SafeAreaView>
+          </Animated.View>
+        </View>
+      </Modal>
+
       {/* Branded Alert */}
       <BrandedAlert
         visible={alertVisible}
@@ -241,7 +617,7 @@ export default function InboxScreen() {
         confirmText={alertConfig?.confirmText}
         cancelText={alertConfig?.cancelText}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -256,128 +632,280 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  content: {
-    padding: 20,
+  contentWrapper: {
+    flex: 1,
+    paddingHorizontal: SPACING.LG,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 8,
+  headerSection: {
+    marginTop: 8,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 32,
-    fontFamily: 'MadeMirage-Regular',
+    fontSize: 28,
+    fontFamily: 'BebasNeue-Regular',
     color: COLORS.TEXT_PRIMARY,
-    textAlign: 'center',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 16,
-    fontFamily: 'Aileron-Light',
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: 24,
-    textAlign: 'center',
+    marginBottom: 8,
+  },
+  netAmount: {
+    fontSize: 20,
+    fontFamily: 'Aileron-Bold',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: COMPONENT_RADIUS.searchBar,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_PRIMARY,
+    padding: 0,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  filterChip: {
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  filterChipActive: {
+    borderColor: COLORS.BRAND_YELLOW,
+    backgroundColor: COLORS.CARD_SECONDARY,
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontFamily: 'Aileron-SemiBold',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  filterChipTextActive: {
+    color: COLORS.BRAND_YELLOW,
+  },
+  listContent: {
+    paddingBottom: SPACING.XL,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Bold',
+    color: COLORS.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginRight: 12,
+  },
+  sectionHeaderDivider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  transactionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: COMPONENT_RADIUS.card,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 14,
+    marginBottom: 10,
+    ...SHADOWS.SMALL,
+  },
+  accountAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.CARD_PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  accountAvatarTransparent: {
+    backgroundColor: 'transparent',
+  },
+  accountAvatarText: {
+    fontSize: 16,
+    fontFamily: 'BebasNeue-Regular',
+    color: COLORS.BRAND_YELLOW,
+  },
+  bankLogoSmall: {
+    width: 32,
+    height: 32,
+  },
+  transactionInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  transactionTitle: {
+    fontSize: 15,
+    fontFamily: 'Aileron-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: 4,
+  },
+  transactionMeta: {
+    fontSize: 12,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: 2,
+  },
+  transactionDetail: {
+    fontSize: 11,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_MUTED,
+  },
+  transactionRight: {
+    alignItems: 'flex-end',
+  },
+  amountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  amountIcon: {
+    marginRight: 4,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontFamily: 'Aileron-Bold',
+  },
+  deleteIconButton: {
+    padding: 4,
   },
   emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
   },
-  emptyText: {
-    color: COLORS.TEXT_PRIMARY,
+  emptyTitle: {
     fontSize: 18,
     fontFamily: 'Aileron-Bold',
-    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginTop: 16,
     marginBottom: 8,
   },
-  emptySubtext: {
-    color: COLORS.TEXT_SECONDARY,
+  emptySubtitle: {
     fontSize: 14,
-    fontFamily: 'Aileron-Light',
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
   },
-  transactionList: {
-    gap: 12,
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
   },
-  transactionCard: {
-    backgroundColor: COLORS.CARD_PRIMARY,
-    padding: 16,
-    borderRadius: COMPONENT_RADIUS.card,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
-  transactionCardHighlighted: {
-    borderColor: COLORS.BRAND_YELLOW,
-    borderWidth: 2,
-    ...SHADOWS.YELLOW_GLOW,
+  modalContainer: {
+    height: '80%',
+    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: COLORS.BACKGROUND,
+    ...SHADOWS.LARGE,
   },
-  transactionHeader: {
+  modalContent: {
+    flex: 1,
+    backgroundColor: COLORS.BACKGROUND,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 18,
+    right: 22,
+    zIndex: 10,
+    padding: 8,
+  },
+  modalBody: {
+    paddingHorizontal: SPACING.LG,
+    paddingTop: 32,
+  },
+  modalAmount: {
+    fontSize: 48,
+    fontFamily: 'BebasNeue-Regular',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalDate: {
+    fontSize: 14,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  modalDetailsSection: {
+    gap: 20,
+  },
+  modalDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  transactionDate: {
-    color: COLORS.TEXT_SECONDARY,
-    fontSize: 14,
-    fontFamily: 'Aileron-Bold',
-    fontWeight: '600',
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  transactionDetail: {
-    color: COLORS.TEXT_PRIMARY,
-    fontSize: 16,
-    fontFamily: 'Aileron-Bold',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  transactionMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-    flexWrap: 'wrap',
     alignItems: 'flex-start',
   },
-  metaText: {
+  modalDetailLabel: {
+    fontSize: 13,
+    fontFamily: 'Aileron-Regular',
     color: COLORS.TEXT_SECONDARY,
-    fontSize: 12,
-    fontFamily: 'Aileron-Light',
-    flexShrink: 1,
-  },
-  transactionFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryText: {
-    color: COLORS.TEXT_SECONDARY,
-    fontSize: 12,
-    fontFamily: 'Aileron-Light',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     flex: 1,
   },
-  amountText: {
-    fontSize: 18,
-    fontFamily: 'BebasNeue-Regular',
-    fontWeight: '400',
+  modalDetailValue: {
+    fontSize: 14,
+    fontFamily: 'Aileron-SemiBold',
+    color: COLORS.TEXT_PRIMARY,
+    textAlign: 'right',
+    flex: 1,
   },
-  debitText: {
-    color: COLORS.ERROR,
+  modalDetailValueMultiline: {
+    fontFamily: 'Aileron-Regular',
   },
-  creditText: {
-    color: COLORS.SUCCESS,
-  },
-  refText: {
-    color: COLORS.TEXT_SECONDARY,
+  modalFooter: {
     fontSize: 11,
-    fontFamily: 'Aileron-Light',
-    marginTop: 4,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_MUTED,
+    textAlign: 'center',
+    marginTop: 40,
     fontStyle: 'italic',
   },
 });
-

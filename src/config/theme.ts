@@ -22,9 +22,16 @@ export const COLORS = {
   BRAND_YELLOW: '#FFF02B',        // Primary brand accent - buttons, highlights, active states
   BRAND_BLACK: '#000000',         // Text on yellow buttons
   
-  // Status Colors
-  SUCCESS: '#00FF88',
-  ERROR: '#FF3366',
+  // Modern Value Colors (Updated: November 15, 2025)
+  REVENUE_GREEN: '#00E676',       // Soft modern green for revenue/income
+  EXPENSE_RED: '#FF4F70',         // Soft modern red for expenses/overheads
+  PROFIT_POSITIVE: '#FFF02B',     // Brand yellow for positive profit
+  PROFIT_NEGATIVE: '#FF4F70',     // Soft red for negative profit
+  MARGIN_COLOR: '#FFF02B',        // Brand yellow for margins
+  
+  // Status Colors (Legacy - consider using modern value colors above)
+  SUCCESS: '#00E676',             // Updated to match REVENUE_GREEN
+  ERROR: '#FF4F70',               // Updated to match EXPENSE_RED
   WARNING: '#FFA500',
   INFO: '#FFF02B',
   

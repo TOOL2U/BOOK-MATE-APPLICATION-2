@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../config/theme';
+import { COMPONENT_RADIUS } from '../constants/borderRadius';
 import { apiService } from '../services/api';
 import { TransactionWithRow } from '../types';
 import NetTrendChart from '../components/NetTrendChart';
@@ -40,11 +44,56 @@ export default function HomeScreen() {
   const [currentAccount, setCurrentAccount] = useState('Sia Moon');
   const [currentPeriodLabel, setCurrentPeriodLabel] = useState('');
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   // Fetch net trend data for the chart
   const { netTrendData, loading: chartLoading } = useNetTrend(selectedPeriod);
 
+  // Calculate month progress
+  const getMonthProgress = (): number => {
+    if (selectedPeriod !== 'this_month') return 0;
+    const now = new Date();
+    const currentDay = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return (currentDay / daysInMonth) * 100;
+  };
+
   useEffect(() => {
     if (isFocused) {
+      // Animate values when period changes
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 150,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 0.95,
+            duration: 150,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 200,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 200,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+      
       fetchDashboardData();
     }
   }, [isFocused, selectedPeriod]);
@@ -257,12 +306,12 @@ const RecentTransactionRow: React.FC<{ transaction: TransactionWithRow }> = ({ t
   };
 
   const getIconColor = () => {
-    return isDebit ? COLORS.ERROR : COLORS.SUCCESS;
+    return isDebit ? COLORS.EXPENSE_RED : COLORS.REVENUE_GREEN;
   };
 
   const amount = isDebit ? transaction.debit : transaction.credit;
   const displayAmount = isDebit ? `-฿${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `+฿${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const amountColor = isDebit ? COLORS.ERROR : COLORS.SUCCESS;
+  const amountColor = isDebit ? COLORS.EXPENSE_RED : COLORS.REVENUE_GREEN;
 
   // Format date from day/month/year
   const formatDate = () => {
@@ -327,21 +376,44 @@ const RecentTransactionRow: React.FC<{ transaction: TransactionWithRow }> = ({ t
         />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>BookMate</Text>
-          <Text style={styles.headerSubtitle}>
-            {currentAccount} • {currentPeriodLabel}
-          </Text>
+      {/* Header with Gradient Overlay */}
+      <View style={styles.headerWrapper}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.06)', 'rgba(0,0,0,0)']}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>DASHBOARD</Text>
+            <Text style={styles.headerSubtitle}>
+              {currentAccount} • {currentPeriodLabel}
+            </Text>
+            <Text style={styles.headerSummary}>
+              You earned ฿{formatCurrency(summaryData.totalIncome)} and spent ฿{formatCurrency(summaryData.totalExpenses)} this {selectedPeriod === 'this_year' ? 'year' : 'month'}
+            </Text>
+          </View>
         </View>
+
+        {/* Month Progress Bar */}
+        {selectedPeriod === 'this_month' && (
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarBackground}>
+              <View style={[styles.progressBarFill, { width: `${getMonthProgress()}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              {Math.round(getMonthProgress())}% of month complete
+            </Text>
+          </View>
+        )}
+
+        {/* Period Selector */}
+        <PeriodSelector />
       </View>
 
-      {/* Period Selector */}
-      <PeriodSelector />
-
-      {/* KPI Summary Cards */}
-      <View style={styles.kpiContainer}>
+      {/* KPI Summary Cards with Animation */}
+      <Animated.View style={[styles.kpiContainer, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
         <KPICard
           label="Net Result"
           value={summaryData.netResult}
@@ -351,16 +423,22 @@ const RecentTransactionRow: React.FC<{ transaction: TransactionWithRow }> = ({ t
           <KPICard label="Income" value={summaryData.totalIncome} isPositive />
           <KPICard label="Expenses" value={summaryData.totalExpenses} isPositive={false} />
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Net Result Trend Chart */}
-      <View style={styles.chartSection}>
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Net Result Trend Chart with Animation */}
+      <Animated.View style={[styles.chartSection, { opacity: fadeAnim }]}>
         <View style={styles.chartHeader}>
           <Text style={styles.chartTitle}>Net Result Trend</Text>
           <Text style={styles.chartSubtitle}>{currentPeriodLabel}</Text>
         </View>
         <NetTrendChart data={netTrendData} height={260} />
-      </View>
+      </Animated.View>
+
+      {/* Divider */}
+      <View style={styles.divider} />
 
       {/* Recent Activity */}
       <View style={styles.section}>
@@ -378,7 +456,10 @@ const RecentTransactionRow: React.FC<{ transaction: TransactionWithRow }> = ({ t
         {recentTransactions.length > 0 ? (
           <View style={styles.transactionsList}>
             {recentTransactions.map((transaction, index) => (
-              <RecentTransactionRow key={transaction.rowNumber || index} transaction={transaction} />
+              <RecentTransactionRow 
+                key={transaction.rowNumber || index} 
+                transaction={transaction}
+              />
             ))}
           </View>
         ) : (
@@ -388,6 +469,9 @@ const RecentTransactionRow: React.FC<{ transaction: TransactionWithRow }> = ({ t
           </View>
         )}
       </View>
+
+      {/* Divider */}
+      <View style={styles.divider} />
 
       {/* Quick Links */}
       <View style={styles.quickLinksSection}>
@@ -431,10 +515,24 @@ const styles = StyleSheet.create({
   },
 
   // Header
+  headerWrapper: {
+    position: 'relative',
+    marginTop: 8,
+  },
+  headerGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+    pointerEvents: 'none',
+  },
   header: {
     paddingHorizontal: SPACING.XL,
     paddingTop: SPACING.LG,
     paddingBottom: SPACING.MD,
+    zIndex: 2,
   },
   headerTitle: {
     fontSize: 28,
@@ -448,6 +546,38 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY,
     marginTop: 4,
   },
+  headerSummary: {
+    fontSize: 12,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 6,
+    opacity: 0.8,
+  },
+
+  // Month Progress Bar
+  progressBarContainer: {
+    paddingHorizontal: SPACING.XL,
+    marginTop: SPACING.SM,
+    marginBottom: SPACING.XS,
+  },
+  progressBarBackground: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.BRAND_YELLOW,
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 10,
+    fontFamily: 'Aileron-Regular',
+    color: COLORS.TEXT_MUTED,
+    marginTop: 4,
+    textAlign: 'right',
+  },
 
   // Period Selector
   periodSelector: {
@@ -455,13 +585,15 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.XL,
     marginBottom: SPACING.LG,
     backgroundColor: COLORS.CARD_SECONDARY,
-    borderRadius: RADIUS.LG,
+    borderRadius: COMPONENT_RADIUS.card,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
     padding: 4,
   },
   periodButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: RADIUS.MD,
+    borderRadius: COMPONENT_RADIUS.card - 2,
     alignItems: 'center',
   },
   periodButtonActive: {
@@ -488,10 +620,10 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
-    backgroundColor: COLORS.CARD_PRIMARY,
-    borderRadius: RADIUS.LG,
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: 'rgba(255,255,255,0.06)',
     padding: SPACING.MD,
     ...SHADOWS.SMALL,
   },
@@ -507,10 +639,18 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_PRIMARY,
   },
   kpiValuePositive: {
-    color: COLORS.SUCCESS,
+    color: COLORS.REVENUE_GREEN,
   },
   kpiValueNegative: {
-    color: COLORS.ERROR,
+    color: COLORS.EXPENSE_RED,
+  },
+
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginVertical: SPACING.MD,
+    marginHorizontal: SPACING.XL,
   },
 
   // Chart Placeholder
@@ -568,10 +708,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.CARD_PRIMARY,
-    borderRadius: RADIUS.MD,
+    backgroundColor: COLORS.CARD_SECONDARY,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: 'rgba(255,255,255,0.06)',
     padding: SPACING.MD,
     marginBottom: SPACING.SM,
   },
@@ -601,7 +741,7 @@ const styles = StyleSheet.create({
   },
   transactionDetail: {
     fontSize: 13,
-    fontFamily: 'Aileron-Regular',
+    fontFamily: 'Aileron-SemiBold',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: 2,
   },
@@ -646,10 +786,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.CARD_SECONDARY,
-    borderRadius: RADIUS.MD,
+    borderRadius: COMPONENT_RADIUS.card,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: 'rgba(255,255,255,0.06)',
     padding: SPACING.LG,
+    ...SHADOWS.SMALL,
   },
   quickLinkLeft: {
     flexDirection: 'row',
